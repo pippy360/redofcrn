@@ -24,7 +24,7 @@ def main(image_path):
 		img = np.expand_dims(np.asarray(img), axis = 0)
 
 		# Create a placeholder for the input image
-		input_node = tf.placeholder(tf.float32, shape=(None, height, width, channels))
+		input_node = tf.placeholder(tf.float32, shape=(1, height, width, channels))
 
 		logits = network.inference(input_node)
 		file_writer = tf.summary.FileWriter(logsDir)

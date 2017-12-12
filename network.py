@@ -29,23 +29,6 @@ def purpleOne(name, inputs, inputSize, outputSize, isPurple):
 		return conv
 
 
-def get_incoming_shape(incoming):
-	""" Returns the incoming data shape """
-	if isinstance(incoming, tf.Tensor):
-		return incoming.get_shape().as_list()
-	elif type(incoming) in [np.array, list, tuple]:
-		return np.shape(incoming)
-	else:
-		raise Exception("Invalid incoming layer.")
-
-
-def interleave(tensors, axis):
-    old_shape = get_incoming_shape(tensors[0])[1:]
-    new_shape = [-1] + old_shape
-    new_shape[axis] *= len(tensors)
-    return tf.reshape(tf.stack(tensors, axis + 1), new_shape)
-
-
 def inference(inputs):
 	#input 304 x 228 x 3
 
@@ -73,7 +56,29 @@ def inference(inputs):
 	return conv
 
 
-def unpool_as_conv(input_data, size, stride = 1):
+####
+#		upconvolution
+####
+
+
+def get_incoming_shape(incoming):
+	""" Returns the incoming data shape """
+	if isinstance(incoming, tf.Tensor):
+		return incoming.get_shape().as_list()
+	elif type(incoming) in [np.array, list, tuple]:
+		return np.shape(incoming)
+	else:
+		raise Exception("Invalid incoming layer.")
+
+
+def interleave(tensors, axis):
+	old_shape = get_incoming_shape(tensors[0])[1:]
+	new_shape = [-1] + old_shape
+	new_shape[axis] *= len(tensors)
+	return tf.reshape(tf.stack(tensors, axis + 1), new_shape)
+
+
+def unpool_as_conv(input_data, size, id, ReLU = False, BN = True):
 
 	# Model upconvolutions (unpooling + convolution) as interleaving feature
 	# maps of four convolutions (A,B,C,D). Building block for up-projections. 
@@ -82,41 +87,40 @@ def unpool_as_conv(input_data, size, stride = 1):
 	# Convolution A (3x3)
 	# --------------------------------------------------
 	layerName = "layer%s_ConvA" % (id)
-	self.feed(input_data)
-	self.conv( 3, 3, size[3], stride, stride, name = layerName, padding = 'SAME', relu = False)
-	outputA = self.get_output()
+    outputA = tf.layers.conv2d(input_data, filters=size[3], kernel_size=(3, 3), padding='SAME', name=layerName)
 
 	# Convolution B (2x3)
 	# --------------------------------------------------
 	layerName = "layer%s_ConvB" % (id)
 	padded_input_B = tf.pad(input_data, [[0, 0], [1, 0], [1, 1], [0, 0]], "CONSTANT")
-	self.feed(padded_input_B)
-	self.conv(2, 3, size[3], stride, stride, name = layerName, padding = 'VALID', relu = False)
-	outputB = self.get_output()
+    outputB = tf.layers.conv2d(padded_input_B, filters=size[3], kernel_size=(2, 3), padding='VALID', name=layerName)
 
 	# Convolution C (3x2)
 	# --------------------------------------------------
 	layerName = "layer%s_ConvC" % (id)
 	padded_input_C = tf.pad(input_data, [[0, 0], [1, 1], [1, 0], [0, 0]], "CONSTANT")
-	self.feed(padded_input_C)
-	self.conv(3, 2, size[3], stride, stride, name = layerName, padding = 'VALID', relu = False)
-	outputC = self.get_output()
+	outputC = tf.layers.conv2d(padded_input_C, filters=size[3], kernel_size=(3, 2), padding='VALID', name=layerName)
 
 	# Convolution D (2x2)
 	# --------------------------------------------------
 	layerName = "layer%s_ConvD" % (id)
 	padded_input_D = tf.pad(input_data, [[0, 0], [1, 0], [1, 0], [0, 0]], "CONSTANT")
-	self.feed(padded_input_D)
-	self.conv(2, 2, size[3], stride, stride, name = layerName, padding = 'VALID', relu = False)
-	outputD = self.get_output()
+	outputD = tf.layers.conv2d(padded_input_D, filters=size[3], kernel_size=(2, 2), padding='VALID', name=layerName)
 
 	# Interleaving elements of the four feature maps
 	# --------------------------------------------------
 	left = interleave([outputA, outputB], axis=1)  # columns
 	right = interleave([outputC, outputD], axis=1)  # columns
-	Y = interleave([left, right], axis=2) # rows
+	result = interleave([left, right], axis=2) # rows
 
-	return Y
+	if BN:
+		layerName = "layer%s_BN" % (id)
+		result = tf.layers.batch_normalization(result, name=layerName)
+
+	if ReLU:#TODO: TAKE THIS OUTSIDE THIS FUNCTION
+		result = tf.nn.relu(result, name = layerName)
+
+	return result
 
 
 def up_project(inputs, size, id, stride = 1):

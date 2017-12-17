@@ -163,7 +163,7 @@ def up_project(input_data, kernel_size, filters_size, id):
 	# Branch 1
 	# Interleaving Convs of 1st branch
 	id_br1 = "%s_br1" % (id)
-	branch1_out1 = unpool_as_conv(input_data, convOutputSize=filters_size, ReLU=True, BN=True)
+	branch1_out1 = unpool_as_conv(input_data, convOutputSize=filters_size, id=0, ReLU=True, BN=True)
 
 	# Convolution following the upProjection on the 1st branch
 	branch1_out2 = tf.layers.conv2d(branch1_out1, filters=filters_size, kernel_size=kernel_size, padding='SAME', use_bias=False)
@@ -180,7 +180,7 @@ def up_project(input_data, kernel_size, filters_size, id):
 	# Branch 2
 	# Interleaving convolutions and output of 2nd branch
 	id_br2 = "%s_br2" % (id)
-	branch2_output = unpool_as_conv(input_data, convOutputSize=filters_size, ReLU=False, BN=True)
+	branch2_output = unpool_as_conv(input_data, convOutputSize=filters_size, id=1, ReLU=False, BN=True)
 
 	# sum branches
 	layerName = "layer%s_Sum" % (id)

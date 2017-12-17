@@ -189,4 +189,4 @@ def up_project(input_data, kernel_size, filters_size, id):
 	layerName = "layer%s_ReLU" % (id)
 	output = tf.nn.relu(output, name=layerName)
 
-	return out
+	return output

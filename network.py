@@ -65,10 +65,10 @@ def inference(input_data, keep_prob=.5):
 
 	conv10 = tf.layers.batch_normalization(conv9)
 
-	conv11 = up_project(conv10, kernel_size=3, filters_size=512, id=1)
-	conv12 = up_project(conv11, kernel_size=3, filters_size=256, id=2)
-	conv13 = up_project(conv12, kernel_size=3, filters_size=128, id=3)
-	conv14 = up_project(conv13, kernel_size=3, filters_size=64, id=4)
+	conv11 = up_project(conv10, kernel_size=3, filters_size=512, id="2x")
+	conv12 = up_project(conv11, kernel_size=3, filters_size=256, id="4x")
+	conv13 = up_project(conv12, kernel_size=3, filters_size=128, id="8x")
+	conv14 = up_project(conv13, kernel_size=3, filters_size=64, id="16x")
 
 	conv15 = tf.nn.dropout(conv14, keep_prob=keep_prob)#Change to 1. while testing and .5 while training
 	conv16 = tf.layers.conv2d(conv15, filters=1, kernel_size=3, padding='SAME')

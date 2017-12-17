@@ -35,7 +35,7 @@ def inference(input_data, keep_prob=.5):
 
 	conv1 = tf.layers.conv2d(input_data, filters=64, kernel_size=7, strides=(2, 2), padding='SAME', name='conv1', use_bias=False)
 	#Using biases
-	biases = tf.get_variable('biases1', [64], dtype = 'float32', trainable=self.trainable)
+	biases = tf.get_variable('biases1', [64], dtype='float32', trainable=self.trainable)
 	conv1 = tf.nn.bias_add(conv1, biases)
 
 	conv2 = tf.layers.batch_normalization(conv1, name='bn_conv1')
@@ -60,7 +60,7 @@ def inference(input_data, keep_prob=.5):
 
 	conv9 = tf.layers.conv2d(conv8, filters=1024, kernel_size=1, padding='SAME', use_bias=False)
 	#Using biases
-	biases = tf.get_variable('biases2', [1024], dtype = 'float32', trainable=self.trainable)
+	biases = tf.get_variable('biases2', [1024], dtype='float32', trainable=self.trainable)
 	conv9 = tf.nn.bias_add(conv9, biases)
 
 	conv10 = tf.layers.batch_normalization(conv9)
@@ -99,7 +99,7 @@ def interleave(tensors, axis):
 	return tf.reshape(tf.stack(tensors, axis + 1), new_shape)
 
 
-def unpool_as_conv(input_data, convOutputSize, id, ReLU = False, BN = True):
+def unpool_as_conv(input_data, convOutputSize, id, ReLU=False, BN=True):
 
 	# Model upconvolutions (unpooling + convolution) as interleaving feature
 	# maps of four convolutions (A,B,C,D). Building block for up-projections. 
@@ -110,7 +110,7 @@ def unpool_as_conv(input_data, convOutputSize, id, ReLU = False, BN = True):
 	layerName = "layer%s_ConvA" % (id)
 	outputA = tf.layers.conv2d(input_data, filters=convOutputSize, kernel_size=(3, 3), padding='SAME', name=layerName, use_bias=False)
 	#Using biases
-	biases = tf.get_variable("layer%s_ConvA_biases" % (id), [convOutputSize], dtype = 'float32', trainable=self.trainable)
+	biases = tf.get_variable("layer%s_ConvA_biases" % (id), [convOutputSize], dtype='float32', trainable=self.trainable)
 	outputA = tf.nn.bias_add(outputA, biases)
 
 	# Convolution B (2x3)
@@ -119,7 +119,7 @@ def unpool_as_conv(input_data, convOutputSize, id, ReLU = False, BN = True):
 	padded_input_B = tf.pad(input_data, [[0, 0], [1, 0], [1, 1], [0, 0]], "CONSTANT")
 	outputB = tf.layers.conv2d(padded_input_B, filters=convOutputSize, kernel_size=(2, 3), padding='VALID', name=layerName, use_bias=False)
 	#Using biases
-	biases = tf.get_variable("layer%s_ConvB_biases" % (id), [convOutputSize], dtype = 'float32', trainable=self.trainable)
+	biases = tf.get_variable("layer%s_ConvB_biases" % (id), [convOutputSize], dtype='float32', trainable=self.trainable)
 	outputB = tf.nn.bias_add(outputB, biases)
 
 	# Convolution C (3x2)
@@ -128,7 +128,7 @@ def unpool_as_conv(input_data, convOutputSize, id, ReLU = False, BN = True):
 	padded_input_C = tf.pad(input_data, [[0, 0], [1, 1], [1, 0], [0, 0]], "CONSTANT")
 	outputC = tf.layers.conv2d(padded_input_C, filters=convOutputSize, kernel_size=(3, 2), padding='VALID', name=layerName, use_bias=False)
 	#Using biases
-	biases = tf.get_variable("layer%s_ConvC_biases" % (id), [convOutputSize], dtype = 'float32', trainable=self.trainable)
+	biases = tf.get_variable("layer%s_ConvC_biases" % (id), [convOutputSize], dtype='float32', trainable=self.trainable)
 	outputC = tf.nn.bias_add(outputC, biases)
 
 	# Convolution D (2x2)
@@ -137,7 +137,7 @@ def unpool_as_conv(input_data, convOutputSize, id, ReLU = False, BN = True):
 	padded_input_D = tf.pad(input_data, [[0, 0], [1, 0], [1, 0], [0, 0]], "CONSTANT")
 	outputD = tf.layers.conv2d(padded_input_D, filters=convOutputSize, kernel_size=(2, 2), padding='VALID', name=layerName, use_bias=False)
 	#Using biases
-	biases = tf.get_variable("layer%s_ConvD_biases" % (id), [convOutputSize], dtype = 'float32', trainable=self.trainable)
+	biases = tf.get_variable("layer%s_ConvD_biases" % (id), [convOutputSize], dtype='float32', trainable=self.trainable)
 	outputD = tf.nn.bias_add(outputD, biases)
 
 	# Interleaving elements of the four feature maps
@@ -151,7 +151,7 @@ def unpool_as_conv(input_data, convOutputSize, id, ReLU = False, BN = True):
 		result = tf.layers.batch_normalization(result, name=layerName)
 
 	if ReLU:#TODO: TAKE THIS OUTSIDE THIS FUNCTION
-		result = tf.nn.relu(result, name = layerName)
+		result = tf.nn.relu(result, name=layerName)
 
 	return result
 
@@ -168,11 +168,11 @@ def up_project(input_data, kernel_size, filters_size, id):
 	# Convolution following the upProjection on the 1st branch
 	branch1_out2 = tf.layers.conv2d(branch1_out1, filters=filters_size, kernel_size=kernel_size, padding='SAME', use_bias=False)
 	#Using biases
-	biases = tf.get_variable('biases_upproject_'+str(id)+'_1', [filters_size], dtype = 'float32', trainable=self.trainable)
+	biases = tf.get_variable('biases_upproject_'+str(id)+'_1', [filters_size], dtype='float32', trainable=self.trainable)
 	branch1_out2 = tf.nn.bias_add(branch1_out2, biases)
 
 	layerName = "layer%s_BN" % (id)
-	branch1_out3 = tf.layers.batch_normalization(branch1_out2, name = layerName)
+	branch1_out3 = tf.layers.batch_normalization(branch1_out2, name=layerName)
 
 	# Output of 1st branch
 	branch1_output = branch1_out3
@@ -184,7 +184,7 @@ def up_project(input_data, kernel_size, filters_size, id):
 
 	# sum branches
 	layerName = "layer%s_Sum" % (id)
-	output = tf.add_n([branch1_output, branch2_output], name = layerName)
+	output = tf.add_n([branch1_output, branch2_output], name=layerName)
 	# ReLU
 	layerName = "layer%s_ReLU" % (id)
 	output = tf.nn.relu(output, name=layerName)

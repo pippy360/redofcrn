@@ -98,11 +98,11 @@ def runIt():
 
     with tf.Session() as sess:
         logits = network.inference(images)
-        loss = loss(logits, depths, invalid_depths)
+        loss_op = loss(logits, depths, invalid_depths)
         train_op = []
 
-        print 'g_sess.run(loss)'
-        print g_sess.run(loss)
+        print 'g_sess.run(loss_op)'
+        print g_sess.run(loss_op)
 
 
 

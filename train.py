@@ -3,6 +3,7 @@ import network
 import os
 from PIL import Image
 import numpy as np
+import math
 
 logsDir = './logs/'
 TRAIN_FILE = 'train.csv'
@@ -97,12 +98,18 @@ def runIt():
     images, depths, invalid_depths = csv_inputs(TRAIN_FILE, BATCH_SIZE, imageSize=imageSize, depthImageSize=depthImageSize)
 
     with tf.Session() as sess:
+        print 'images'
+        print images
         logits = network.inference(images)
+        print logits;
         loss_op = loss(logits, depths, invalid_depths)
         train_op = []
+        init = tf.global_variables_initializer()
+        sess.run(init)
 
-        print 'g_sess.run(loss_op)'
-        print g_sess.run(loss_op)
+        print 'sess.run(loss_op)'
+        print sess.run(loss_op)
+        print 'sess.run(loss_op)'
 
 
 

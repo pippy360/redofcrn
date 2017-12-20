@@ -10,8 +10,8 @@ TEST_FILE = 'test.csv'
 
 IMAGE_HEIGHT = 228
 IMAGE_WIDTH = 304
-TARGET_HEIGHT = 55
-TARGET_WIDTH = 74
+TARGET_HEIGHT = 128
+TARGET_WIDTH = 160
 BATCH_SIZE = 1#8
 
 #TODO: How did they deal with invalid depths?

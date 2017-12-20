@@ -8,6 +8,12 @@ logsDir = './logs/'
 TRAIN_FILE = 'train.csv'
 TEST_FILE = 'test.csv'
 
+IMAGE_HEIGHT = 228
+IMAGE_WIDTH = 304
+TARGET_HEIGHT = 55
+TARGET_WIDTH = 74
+BATCH_SIZE = 1#8
+
 #TODO: How did they deal with invalid depths?
 #TODO: make sure the depths are right.../255 ??? 
 def csv_inputs(csv_file_path, batch_size, imageSize, depthImageSize):
@@ -42,9 +48,9 @@ def csv_inputs(csv_file_path, batch_size, imageSize, depthImageSize):
 
 
 def loss(logits, depths, invalid_depths):
-    logits_flat = tf.reshape(logits, [-1, 55*74])
-    depths_flat = tf.reshape(depths, [-1, 55*74])
-    invalid_depths_flat = tf.reshape(invalid_depths, [-1, 55*74])
+    logits_flat = tf.reshape(logits, [-1, TARGET_HEIGHT*TARGET_WIDTH])
+    depths_flat = tf.reshape(depths, [-1, TARGET_HEIGHT*TARGET_WIDTH])
+    invalid_depths_flat = tf.reshape(invalid_depths, [-1, TARGET_HEIGHT*TARGET_WIDTH])
 
     predict = tf.multiply(logits_flat, invalid_depths_flat)
     target = tf.multiply(depths_flat, invalid_depths_flat)
@@ -53,7 +59,7 @@ def loss(logits, depths, invalid_depths):
     sum_square_d = tf.reduce_sum(square_d, 1)
     sum_d = tf.reduce_sum(d, 1)
     sqare_sum_d = tf.square(sum_d)
-    cost = tf.reduce_mean(sum_square_d / 55.0*74.0 - 0.5*sqare_sum_d / math.pow(55*74, 2))
+    cost = tf.reduce_mean(sum_square_d / TARGET_HEIGHT*TARGET_WIDTH - 0.5*sqare_sum_d / math.pow(TARGET_HEIGHT*TARGET_WIDTH, 2))
     tf.add_to_collection('losses', cost)
     return tf.add_n(tf.get_collection('losses'), name='total_loss')
 
@@ -83,24 +89,21 @@ def train(total_loss, global_step, batch_size):
     return train_op
 
 def runIt():
-	if not os.path.exists(logsDir):
-		os.makedirs(logsDir)
+    if not os.path.exists(logsDir):
+        os.makedirs(logsDir)
 
-	IMAGE_HEIGHT = 228
-	IMAGE_WIDTH = 304
-	TARGET_HEIGHT = 55
-	TARGET_WIDTH = 74
-	BATCH_SIZE = 1#8
-    images, depths, invalid_depths = csv_inputs(TRAIN_FILE, BATCH_SIZE, 
-    	imageSize=(IMAGE_HEIGHT, IMAGE_WIDTH), depthImageSize=(TARGET_HEIGHT, TARGET_WIDTH))
+    imageSize = (IMAGE_HEIGHT, IMAGE_WIDTH)
+    depthImageSize = (TARGET_HEIGHT, TARGET_WIDTH)
+    images, depths, invalid_depths = csv_inputs(TRAIN_FILE, BATCH_SIZE, imageSize=imageSize, depthImageSize=depthImageSize)
 
-	with tf.Session() as sess:
-		logits = network.inference(images)
+    with tf.Session() as sess:
+        logits = network.inference(images)
         loss = model.loss(logits, depths, invalid_depths)
-		train_op
+        train_op = []
 
-		file_writer = tf.summary.FileWriter(logsDir)
-		file_writer.add_graph(sess.graph)
+        print 'g_sess.run(loss)'
+        print g_sess.run(loss)
+
 
 
 runIt()

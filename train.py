@@ -93,11 +93,10 @@ def runIt():
     if not os.path.exists(logsDir):
         os.makedirs(logsDir)
 
-    imageSize = (IMAGE_HEIGHT, IMAGE_WIDTH)
-    depthImageSize = (TARGET_HEIGHT, TARGET_WIDTH)
-    images, depths, invalid_depths = csv_inputs(TRAIN_FILE, BATCH_SIZE, imageSize=imageSize, depthImageSize=depthImageSize)
-
-    with tf.Session() as sess:
+    with tf.Graph().as_default():
+        imageSize = (IMAGE_HEIGHT, IMAGE_WIDTH)
+        depthImageSize = (TARGET_HEIGHT, TARGET_WIDTH)
+        images, depths, invalid_depths = csv_inputs(TRAIN_FILE, BATCH_SIZE, imageSize=imageSize, depthImageSize=depthImageSize)
         print 'images'
         print images
         logits = network.inference(images)
@@ -105,11 +104,13 @@ def runIt():
         loss_op = loss(logits, depths, invalid_depths)
         train_op = []
         init = tf.global_variables_initializer()
-        sess.run(init)
+        
 
-        print 'sess.run(loss_op)'
-        print sess.run(loss_op)
-        print 'sess.run(loss_op)'
+        with tf.train.MonitoredTrainingSession() as sess:
+            sess.run(init)
+            print 'sess.run(loss_op)'
+            print sess.run(loss_op)
+            print 'sess.run(loss_op)'
 
 
 

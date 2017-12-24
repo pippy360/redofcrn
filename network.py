@@ -30,10 +30,10 @@ def residualLayer(name, input_data, inputSize, outputSize, isResize):
 		return conv
 
 
-def inference(input_data, keep_prob=.5):
+def inference(input_images, keep_prob=.5):
 	#input 304 x 228 x 3
 
-	conv1 = tf.layers.conv2d(input_data, filters=64, kernel_size=7, strides=(2, 2), padding='SAME', name='conv1', use_bias=False)
+	conv1 = tf.layers.conv2d(input_images, filters=64, kernel_size=7, strides=(2, 2), padding='SAME', name='conv1', use_bias=False)
 	#Using biases
 	biases = tf.get_variable('biases1', [64], dtype='float32', trainable=True)
 	conv1 = tf.nn.bias_add(conv1, biases)

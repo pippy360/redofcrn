@@ -4,6 +4,9 @@ import os
 from PIL import Image
 import numpy as np
 import math
+import time
+import datetime
+
 
 logsDir = './logs/'
 TRAIN_FILE = 'train.csv'
@@ -98,6 +101,7 @@ def _add_loss_summaries(total_loss):
 
   return loss_averages_op
 
+
 NUM_EXAMPLES_PER_EPOCH_FOR_TRAIN = 500
 NUM_EPOCHS_PER_DECAY = 30
 INITIAL_LEARNING_RATE = 0.0001
@@ -139,13 +143,13 @@ def train(total_loss, global_step, batch_size):
   apply_gradient_op = opt.apply_gradients(grads, global_step=global_step)
 
   # Add histograms for trainable variables.
-  for var in tf.trainable_variables():
-    tf.summary.histogram(var.op.name, var)
+  #for var in tf.trainable_variables():
+  #  tf.summary.histogram(var.op.name, var)
 
   # Add histograms for gradients.
-  for grad, var in grads:
-    if grad is not None:
-      tf.summary.histogram(var.op.name + '/gradients', grad)
+  #for grad, var in grads:
+  #  if grad is not None:
+  #    tf.summary.histogram(var.op.name + '/gradients', grad)
 
   # Track the moving averages of all trainable variables.
   variable_averages = tf.train.ExponentialMovingAverage(
@@ -177,11 +181,44 @@ def runIt():
         init = tf.global_variables_initializer()
         
 
-        with tf.train.MonitoredTrainingSession() as sess:
-            sess.run(init)
-            print 'sess.run(loss_op)'
-            print sess.run(train_op)
-            print 'sess.run(loss_op)'
+	class _LoggerHook(tf.train.SessionRunHook):
+	  """Logs loss and runtime."""
+
+	  def begin(self):
+	    self._step = -1
+	    self._start_time = time.time()
+
+	  def before_run(self, run_context):
+	    self._step += 1
+	    return tf.train.SessionRunArgs(loss_op)  # Asks for loss value.
+
+	  def after_run(self, run_context, run_values):
+            log_frequency = 10
+	    if self._step % log_frequency == 0:
+	      current_time = time.time()
+	      duration = current_time - self._start_time
+	      self._start_time = current_time
+
+	      loss_value = run_values.results
+              batch_size = 1
+	      examples_per_sec = log_frequency * batch_size / duration
+	      sec_per_batch = float(duration / log_frequency)
+
+	      format_str = (': step %d, loss = %.2f (%.1f examples/sec; %.3f '
+			    'sec/batch)')
+	      print (format_str % (self._step, loss_value,
+				   examples_per_sec, sec_per_batch))
+
+	with tf.train.MonitoredTrainingSession(
+	    checkpoint_dir='./logs',
+	    hooks=[tf.train.StopAtStepHook(last_step=100),
+		   tf.train.NanTensorHook(loss_op),
+		   _LoggerHook()],
+	    ) as sess:
+		while not sess.should_stop():
+		    print 'sess.run(loss_op)'
+		    print sess.run(train_op)
+		    print 'sess.run(loss_op)'
 
 
 

@@ -48,7 +48,7 @@ def csv_inputs(csv_file_path, batch_size, imageSize, depthImageSize):
     return images, depths, invalid_depths
 
 
-def loss(logits, depths, invalid_depths):
+def loss_scale_invariant_l2_norm(logits, depths, invalid_depths):
     logits_flat = tf.reshape(logits, [-1, TARGET_HEIGHT*TARGET_WIDTH])
     depths_flat = tf.reshape(depths, [-1, TARGET_HEIGHT*TARGET_WIDTH])
     invalid_depths_flat = tf.reshape(invalid_depths, [-1, TARGET_HEIGHT*TARGET_WIDTH])
@@ -63,6 +63,16 @@ def loss(logits, depths, invalid_depths):
     cost = tf.reduce_mean(sum_square_d / TARGET_HEIGHT*TARGET_WIDTH - 0.5*sqare_sum_d / math.pow(TARGET_HEIGHT*TARGET_WIDTH, 2))
     tf.add_to_collection('losses', cost)
     return tf.add_n(tf.get_collection('losses'), name='total_loss')
+
+def loss_l2_norm(logits, depths, invalid_depths):
+    logits_flat = tf.reshape(logits, [-1, TARGET_HEIGHT*TARGET_WIDTH])
+    depths_flat = tf.reshape(depths, [-1, TARGET_HEIGHT*TARGET_WIDTH])
+    invalid_depths_flat = tf.reshape(invalid_depths, [-1, TARGET_HEIGHT*TARGET_WIDTH])
+
+    predict = tf.multiply(logits_flat, invalid_depths_flat)
+    target = tf.multiply(depths_flat, invalid_depths_flat)
+    d = tf.subtract(predict, target)
+    return tf.nn.l2_loss(d)
 
 
 
@@ -101,7 +111,8 @@ def runIt():
         print images
         logits = network.inference(images)
         print logits;
-        loss_op = loss(logits, depths, invalid_depths)
+        #loss_op = loss_scale_invariant_l2_norm(logits, depths, invalid_depths)
+        loss_op = loss_l2_norm(logits, depths, invalid_depths)
         train_op = []
         init = tf.global_variables_initializer()
         

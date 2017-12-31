@@ -104,7 +104,7 @@ def _add_loss_summaries(total_loss):
 
 NUM_EXAMPLES_PER_EPOCH_FOR_TRAIN = 500
 NUM_EPOCHS_PER_DECAY = 30
-INITIAL_LEARNING_RATE = 0.0001
+INITIAL_LEARNING_RATE = 0.00000001
 LEARNING_RATE_DECAY_FACTOR = 0.9
 MOVING_AVERAGE_DECAY = 0.999999
 
@@ -179,7 +179,6 @@ def runIt():
         loss_op = loss_l2_norm(logits, depths, invalid_depths)
 	train_op = train(loss_op, global_step, batch_size=1)
         init = tf.global_variables_initializer()
-        
 
 	class _LoggerHook(tf.train.SessionRunHook):
 	  """Logs loss and runtime."""
@@ -193,7 +192,7 @@ def runIt():
 	    return tf.train.SessionRunArgs(loss_op)  # Asks for loss value.
 
 	  def after_run(self, run_context, run_values):
-            log_frequency = 10
+            log_frequency = 1
 	    if self._step % log_frequency == 0:
 	      current_time = time.time()
 	      duration = current_time - self._start_time
@@ -213,12 +212,12 @@ def runIt():
 	    checkpoint_dir='./logs',
 	    hooks=[tf.train.StopAtStepHook(last_step=100),
 		   tf.train.NanTensorHook(loss_op),
-		   _LoggerHook()],
-	    ) as sess:
-		while not sess.should_stop():
-		    print 'sess.run(loss_op)'
-		    print sess.run(train_op)
-		    print 'sess.run(loss_op)'
+                   _LoggerHook()],
+	    ) as mon_sess:
+                print 'running...'
+                while not mon_sess.should_stop():
+                    print 'step...'
+		    mon_sess.run(train_op)
 
 
 

@@ -16,13 +16,18 @@ IMAGE_HEIGHT = 228
 IMAGE_WIDTH = 304
 TARGET_HEIGHT = 128
 TARGET_WIDTH = 160
-BATCH_SIZE = 1#8
+BATCH_SIZE = 8
+
+NUM_EXAMPLES_PER_EPOCH_FOR_TRAIN = 500
+NUM_EPOCHS_PER_DECAY = 30
+INITIAL_LEARNING_RATE = 0.000000001
+LEARNING_RATE_DECAY_FACTOR = 0.9
+MOVING_AVERAGE_DECAY = 0.999999
 
 #TODO: How did they deal with invalid depths?
 #TODO: make sure the depths are right.../255 ??? 
-def csv_inputs(csv_file_path, batch_size, imageSize, depthImageSize):
+def csv_inputs(filename_queue, batch_size, imageSize, depthImageSize):
 
-    filename_queue = tf.train.string_input_producer([csv_file_path], shuffle=True)
     reader = tf.TextLineReader()
     _, serialized_example = reader.read(filename_queue)
     filename, depth_filename = tf.decode_csv(serialized_example, [["path"], ["annotation"]])
@@ -42,13 +47,14 @@ def csv_inputs(csv_file_path, batch_size, imageSize, depthImageSize):
     depth = tf.image.resize_images(depth, depthImageSize)
     invalid_depth = tf.sign(depth)
     # generate batch
-    images, depths, invalid_depths = tf.train.batch(
-        [image, depth, invalid_depth],
+    images, depths, invalid_depths, filenames = tf.train.batch(
+        [image, depth, invalid_depth, filename],
         batch_size=batch_size,
         num_threads=4,
         capacity= 50 + 3 * batch_size,
     )
-    return images, depths, invalid_depths
+
+    return images, depths, invalid_depths, filenames
 
 
 def loss_scale_invariant_l2_norm(logits, depths, invalid_depths):
@@ -102,11 +108,6 @@ def _add_loss_summaries(total_loss):
   return loss_averages_op
 
 
-NUM_EXAMPLES_PER_EPOCH_FOR_TRAIN = 500
-NUM_EPOCHS_PER_DECAY = 30
-INITIAL_LEARNING_RATE = 0.00000001
-LEARNING_RATE_DECAY_FACTOR = 0.9
-MOVING_AVERAGE_DECAY = 0.999999
 
 def train(total_loss, global_step, batch_size):
   """Train CIFAR-10 model.
@@ -170,11 +171,9 @@ def runIt():
 	global_step = tf.train.get_or_create_global_step()
         imageSize = (IMAGE_HEIGHT, IMAGE_WIDTH)
         depthImageSize = (TARGET_HEIGHT, TARGET_WIDTH)
-        images, depths, invalid_depths = csv_inputs(TRAIN_FILE, BATCH_SIZE, imageSize=imageSize, depthImageSize=depthImageSize)
-        print 'images'
-        print images
+        filename_queue = tf.train.string_input_producer([TRAIN_FILE], shuffle=False)
+        images, depths, invalid_depths, filenames = csv_inputs(filename_queue, BATCH_SIZE, imageSize=imageSize, depthImageSize=depthImageSize)
         logits = network.inference(images)
-        print logits;
         #loss_op = loss_scale_invariant_l2_norm(logits, depths, invalid_depths)
         loss_op = loss_l2_norm(logits, depths, invalid_depths)
 	train_op = train(loss_op, global_step, batch_size=1)
@@ -189,7 +188,7 @@ def runIt():
 
 	  def before_run(self, run_context):
 	    self._step += 1
-	    return tf.train.SessionRunArgs(loss_op)  # Asks for loss value.
+	    return tf.train.SessionRunArgs([loss_op])  # Asks for loss value.
 
 	  def after_run(self, run_context, run_values):
             log_frequency = 1
@@ -198,7 +197,8 @@ def runIt():
 	      duration = current_time - self._start_time
 	      self._start_time = current_time
 
-	      loss_value = run_values.results
+	      loss_value = run_values.results[0]
+              #filename = run_values.results[1]
               batch_size = 1
 	      examples_per_sec = log_frequency * batch_size / duration
 	      sec_per_batch = float(duration / log_frequency)

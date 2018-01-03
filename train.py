@@ -8,7 +8,7 @@ import time
 import datetime
 
 
-logsDir = './logs/'
+CHECKPOINT_DIR = './train_checkpoint'
 TRAIN_FILE = 'train.csv'
 TEST_FILE = 'test.csv'
 
@@ -164,9 +164,6 @@ def train(total_loss, global_step, batch_size):
 
 
 def runIt():
-    if not os.path.exists(logsDir):
-        os.makedirs(logsDir)
-
     with tf.Graph().as_default():
 	global_step = tf.train.get_or_create_global_step()
         imageSize = (IMAGE_HEIGHT, IMAGE_WIDTH)
@@ -209,7 +206,7 @@ def runIt():
 				   examples_per_sec, sec_per_batch))
 
 	with tf.train.MonitoredTrainingSession(
-	    checkpoint_dir='./logs',
+	    checkpoint_dir=CHECKPOINT_DIR,
 	    hooks=[tf.train.StopAtStepHook(last_step=100),
 		   tf.train.NanTensorHook(loss_op),
                    _LoggerHook()],
@@ -221,5 +218,8 @@ def runIt():
 
 
 
-runIt()
+def main(argv=None):  # pylint: disable=unused-argument
+	if not os.path.exists(CHECKPOINT_DIR):
+		os.makedirs(CHECKPOINT_DIR)
+	runIt()
 

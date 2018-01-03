@@ -24,65 +24,6 @@ INITIAL_LEARNING_RATE = 0.000000001
 LEARNING_RATE_DECAY_FACTOR = 0.9
 MOVING_AVERAGE_DECAY = 0.999999
 
-#TODO: How did they deal with invalid depths?
-#TODO: make sure the depths are right.../255 ??? 
-def csv_inputs(filename_queue, batch_size, imageSize, depthImageSize):
-
-    reader = tf.TextLineReader()
-    _, serialized_example = reader.read(filename_queue)
-    filename, depth_filename = tf.decode_csv(serialized_example, [["path"], ["annotation"]])
-    # input
-    jpg = tf.read_file(filename)
-    image = tf.image.decode_jpeg(jpg, channels=3)
-    image = tf.cast(image, tf.float32)       
-    # target
-    depth_png = tf.read_file(depth_filename)
-    depth = tf.image.decode_png(depth_png, channels=1)
-    depth = tf.cast(depth, tf.float32)
-    depth = tf.div(depth, [255.0])
-    #depth = tf.cast(depth, tf.int64)
-
-    # resize
-    image = tf.image.resize_images(image, imageSize)
-    depth = tf.image.resize_images(depth, depthImageSize)
-    invalid_depth = tf.sign(depth)
-    # generate batch
-    images, depths, invalid_depths, filenames = tf.train.batch(
-        [image, depth, invalid_depth, filename],
-        batch_size=batch_size,
-        num_threads=4,
-        capacity= 50 + 3 * batch_size,
-    )
-
-    return images, depths, invalid_depths, filenames
-
-
-def loss_scale_invariant_l2_norm(logits, depths, invalid_depths):
-    logits_flat = tf.reshape(logits, [-1, TARGET_HEIGHT*TARGET_WIDTH])
-    depths_flat = tf.reshape(depths, [-1, TARGET_HEIGHT*TARGET_WIDTH])
-    invalid_depths_flat = tf.reshape(invalid_depths, [-1, TARGET_HEIGHT*TARGET_WIDTH])
-
-    predict = tf.multiply(logits_flat, invalid_depths_flat)
-    target = tf.multiply(depths_flat, invalid_depths_flat)
-    d = tf.subtract(predict, target)
-    square_d = tf.square(d)
-    sum_square_d = tf.reduce_sum(square_d, 1)
-    sum_d = tf.reduce_sum(d, 1)
-    sqare_sum_d = tf.square(sum_d)
-    cost = tf.reduce_mean(sum_square_d / TARGET_HEIGHT*TARGET_WIDTH - 0.5*sqare_sum_d / math.pow(TARGET_HEIGHT*TARGET_WIDTH, 2))
-    tf.add_to_collection('losses', cost)
-    return tf.add_n(tf.get_collection('losses'), name='total_loss')
-
-def loss_l2_norm(logits, depths, invalid_depths):
-    logits_flat = tf.reshape(logits, [-1, TARGET_HEIGHT*TARGET_WIDTH])
-    depths_flat = tf.reshape(depths, [-1, TARGET_HEIGHT*TARGET_WIDTH])
-    invalid_depths_flat = tf.reshape(invalid_depths, [-1, TARGET_HEIGHT*TARGET_WIDTH])
-
-    predict = tf.multiply(logits_flat, invalid_depths_flat)
-    target = tf.multiply(depths_flat, invalid_depths_flat)
-    d = tf.subtract(predict, target)
-    return tf.nn.l2_loss(d)
-
 def _add_loss_summaries(total_loss):
   """Add summaries for losses in CIFAR-10 model.
   Generates moving average for all losses and associated summaries for
@@ -169,10 +110,10 @@ def runIt():
         imageSize = (IMAGE_HEIGHT, IMAGE_WIDTH)
         depthImageSize = (TARGET_HEIGHT, TARGET_WIDTH)
         filename_queue = tf.train.string_input_producer([TRAIN_FILE], shuffle=False)
-        images, depths, invalid_depths, filenames = csv_inputs(filename_queue, BATCH_SIZE, imageSize=imageSize, depthImageSize=depthImageSize)
+        images, depths, invalid_depths, filenames = network.csv_inputs(filename_queue, BATCH_SIZE, imageSize=imageSize, depthImageSize=depthImageSize)
         logits = network.inference(images)
         #loss_op = loss_scale_invariant_l2_norm(logits, depths, invalid_depths)
-        loss_op = loss_l2_norm(logits, depths, invalid_depths)
+        loss_op = network.loss_l2_norm(logits, depths, invalid_depths)
 	train_op = train(loss_op, global_step, batch_size=1)
         init = tf.global_variables_initializer()
 

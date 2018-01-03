@@ -31,45 +31,9 @@ parser.add_argument('--num_examples', type=int, default=10000,
 parser.add_argument('--run_once', type=bool, default=False,
                     help='Whether to run eval only once.')
 
-
-
-//
-//FIXME: this code is copied from train.py
-//
-def csv_inputs(filename_queue, batch_size, imageSize, depthImageSize):
-
-    reader = tf.TextLineReader()
-    _, serialized_example = reader.read(filename_queue)
-    filename, depth_filename = tf.decode_csv(serialized_example, [["path"], ["annotation"]])
-    # input
-    jpg = tf.read_file(filename)
-    image = tf.image.decode_jpeg(jpg, channels=3)
-    image = tf.cast(image, tf.float32)       
-    # target
-    depth_png = tf.read_file(depth_filename)
-    depth = tf.image.decode_png(depth_png, channels=1)
-    depth = tf.cast(depth, tf.float32)
-    depth = tf.div(depth, [255.0])
-    #depth = tf.cast(depth, tf.int64)
-
-    # resize
-    image = tf.image.resize_images(image, imageSize)
-    depth = tf.image.resize_images(depth, depthImageSize)
-    invalid_depth = tf.sign(depth)
-    # generate batch
-    images, depths, invalid_depths, filenames = tf.train.batch(
-        [image, depth, invalid_depth, filename],
-        batch_size=batch_size,
-        num_threads=4,
-        capacity= 50 + 3 * batch_size,
-    )
-
-    return images, depths, invalid_depths, filenames
-
-
 batch_size = 8
 
-def eval_once(saver, summary_writer, top_k_op, summary_op):
+def eval_once(saver, summary_writer, loss_op, summary_op):
   """Run Eval once.
   Args:
     saver: Saver.
@@ -99,17 +63,16 @@ def eval_once(saver, summary_writer, top_k_op, summary_op):
                                          start=True))
 
       num_iter = int(math.ceil(FLAGS.num_examples / batch_size))
-      true_count = 0  # Counts the number of correct predictions.
+      loss_average = 0.0
       total_sample_count = num_iter * batch_size
       step = 0
       while step < num_iter and not coord.should_stop():
-        predictions = sess.run([top_k_op])
-        true_count += np.sum(predictions)
+        loss_value = sess.run([loss_op])
+        loss_average += float(loss_value)/float(num_iter)
         step += 1
 
       # Compute precision @ 1.
-      precision = true_count / total_sample_count
-      print('%s: precision @ 1 = %.3f' % (datetime.now(), precision))
+      print('%s: loss_average @ 1 = %.3f' % (datetime.now(), loss_average))
 
       summary = tf.Summary()
       summary.ParseFromString(sess.run(summary_op))
@@ -127,15 +90,12 @@ def evaluate():
   with tf.Graph().as_default() as g:
     # Get images and labels for CIFAR-10.
 
+    imageSize = (IMAGE_HEIGHT, IMAGE_WIDTH)
+    depthImageSize = (TARGET_HEIGHT, TARGET_WIDTH)
     filename_queue = tf.train.string_input_producer([FLAGS.eval_data], shuffle=False)
-    images, depths, invalid_depths, filenames = csv_inputs(filename_queue, BATCH_SIZE, imageSize=imageSize, depthImageSize=depthImageSize)
-
-    # Build a Graph that computes the logits predictions from the
-    # inference model.
+    images, depths, invalid_depths, filenames = network.csv_inputs(filename_queue, batch_size, imageSize=imageSize, depthImageSize=depthImageSize)
     logits = network.inference(images)
-
-    # Calculate predictions.
-    top_k_op = tf.nn.in_top_k(logits, labels, 1)
+    loss_op = network.loss_l2_norm(logits, depths, invalid_depths)
 
     # Restore the moving average version of the learned variables for eval.
     variable_averages = tf.train.ExponentialMovingAverage(
@@ -149,7 +109,7 @@ def evaluate():
     summary_writer = tf.summary.FileWriter(FLAGS.eval_dir, g)
 
     while True:
-      eval_once(saver, summary_writer, top_k_op, summary_op)
+      eval_once(saver, summary_writer, loss_op, summary_op)
       if FLAGS.run_once:
         break
       time.sleep(FLAGS.eval_interval_secs)

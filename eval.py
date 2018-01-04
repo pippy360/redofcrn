@@ -10,28 +10,35 @@ import numpy as np
 import tensorflow as tf
 
 import network
+import argparse
 
 parser = argparse.ArgumentParser()
 
 parser.add_argument('--eval_dir', type=str, default='./eval',
                     help='Directory where to write event logs.')
 
-parser.add_argument('--eval_data', type=str, default='test',
+parser.add_argument('--eval_data', type=str, default='test.csv',
                     help='Either `test` or `train_eval`.')
 
 parser.add_argument('--checkpoint_dir', type=str, default='./train_checkpoint',
                     help='Directory where to read model checkpoints.')
 
-parser.add_argument('--eval_interval_secs', type=int, default=60*5,
+parser.add_argument('--eval_interval_secs', type=int, default=30,
                     help='How often to run the eval.')
 
-parser.add_argument('--num_examples', type=int, default=10000,
+parser.add_argument('--num_examples', type=int, default=120,
                     help='Number of examples to run.')
 
 parser.add_argument('--run_once', type=bool, default=False,
                     help='Whether to run eval only once.')
 
 batch_size = 8
+
+IMAGE_HEIGHT = 228
+IMAGE_WIDTH = 304
+TARGET_HEIGHT = 128
+TARGET_WIDTH = 160
+BATCH_SIZE = 8
 
 def eval_once(saver, summary_writer, loss_op, summary_op):
   """Run Eval once.
@@ -67,7 +74,7 @@ def eval_once(saver, summary_writer, loss_op, summary_op):
       total_sample_count = num_iter * batch_size
       step = 0
       while step < num_iter and not coord.should_stop():
-        loss_value = sess.run([loss_op])
+        loss_value = sess.run([loss_op])[0]
         loss_average += float(loss_value)/float(num_iter)
         step += 1
 
@@ -76,13 +83,14 @@ def eval_once(saver, summary_writer, loss_op, summary_op):
 
       summary = tf.Summary()
       summary.ParseFromString(sess.run(summary_op))
-      summary.value.add(tag='Precision @ 1', simple_value=precision)
+      summary.value.add(tag='eval_loss_average', simple_value=loss_average)
       summary_writer.add_summary(summary, global_step)
     except Exception as e:  # pylint: disable=broad-except
       coord.request_stop(e)
 
     coord.request_stop()
     coord.join(threads, stop_grace_period_secs=10)
+
 
 
 def evaluate():
@@ -92,7 +100,7 @@ def evaluate():
 
     imageSize = (IMAGE_HEIGHT, IMAGE_WIDTH)
     depthImageSize = (TARGET_HEIGHT, TARGET_WIDTH)
-    filename_queue = tf.train.string_input_producer([FLAGS.eval_data], shuffle=False)
+    filename_queue = tf.train.string_input_producer([FLAGS.eval_data], shuffle=True)
     images, depths, invalid_depths, filenames = network.csv_inputs(filename_queue, batch_size, imageSize=imageSize, depthImageSize=depthImageSize)
     logits = network.inference(images)
     loss_op = network.loss_l2_norm(logits, depths, invalid_depths)

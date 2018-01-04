@@ -164,3 +164,4 @@ def main(argv=None):  # pylint: disable=unused-argument
 		os.makedirs(CHECKPOINT_DIR)
 	runIt()
 
+main()

@@ -1,6 +1,13 @@
 import numpy as np
 import tensorflow as tf
 
+
+NUM_EXAMPLES_PER_EPOCH_FOR_TRAIN = 500
+NUM_EPOCHS_PER_DECAY = 30
+INITIAL_LEARNING_RATE = 0.000000001
+LEARNING_RATE_DECAY_FACTOR = 0.9
+MOVING_AVERAGE_DECAY = 0.999999
+
 def csv_inputs(filename_queue, batch_size, imageSize, depthImageSize):
 
     reader = tf.TextLineReader()
@@ -31,6 +38,13 @@ def csv_inputs(filename_queue, batch_size, imageSize, depthImageSize):
 
     return images, depths, invalid_depths, filenames
 
+
+#FIXME: REMOVE THIS 
+IMAGE_HEIGHT = 228
+IMAGE_WIDTH = 304
+TARGET_HEIGHT = 128
+TARGET_WIDTH = 160
+BATCH_SIZE = 8
 
 def loss_scale_invariant_l2_norm(logits, depths, invalid_depths):
     logits_flat = tf.reshape(logits, [-1, TARGET_HEIGHT*TARGET_WIDTH])

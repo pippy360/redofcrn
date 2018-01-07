@@ -26,13 +26,13 @@ parser.add_argument('--checkpoint_dir', type=str, default='./train_checkpoint',
 parser.add_argument('--eval_interval_secs', type=int, default=120,
                     help='How often to run the eval.')
 
-parser.add_argument('--num_examples', type=int, default=120,
+parser.add_argument('--num_examples', type=int, default=1000,
                     help='Number of examples to run.')
 
 parser.add_argument('--run_once', type=bool, default=False,
                     help='Whether to run eval only once.')
 
-batch_size = 8
+batch_size = 1
 
 IMAGE_HEIGHT = 228
 IMAGE_WIDTH = 304
@@ -40,7 +40,7 @@ TARGET_HEIGHT = 128
 TARGET_WIDTH = 160
 BATCH_SIZE = 8
 
-def eval_once(saver, summary_writer, loss_op, summary_op):
+def eval_once(saver, summary_writer, loss_ops, summary_op):
   """Run Eval once.
   Args:
     saver: Saver.
@@ -70,20 +70,27 @@ def eval_once(saver, summary_writer, loss_op, summary_op):
                                          start=True))
 
       num_iter = int(math.ceil(FLAGS.num_examples / batch_size))
-      loss_average = 0.0
+      abs_relative_diff_average = 0.0
+      abs_relative_diff_squared_average = 0.0
+      rmse_average = 0.0
       total_sample_count = num_iter * batch_size
       step = 0
       while step < num_iter and not coord.should_stop():
-        loss_value = sess.run([loss_op])[0]
-        loss_average += float(loss_value)/float(num_iter)
+        return_values = sess.run(loss_ops)
+        abs_relative_diff_average += float(return_values[0])/float(num_iter)
+        abs_relative_diff_squared_average += float(return_values[1])/float(num_iter)
+        print(return_values[2])
+	rmse_average += float(return_values[2])/float(num_iter)
         step += 1
 
-      # Compute precision @ 1.
-      print('%s: loss_average @ 1 = %.3f' % (datetime.now(), loss_average))
+      print('%s: loss_average = abs: %.3f, abs_squared: %.3f, rmse: %.3f' % (datetime.now(), 
+		abs_relative_diff_average, abs_relative_diff_squared_average, rmse_average))
 
       summary = tf.Summary()
       summary.ParseFromString(sess.run(summary_op))
-      summary.value.add(tag='eval_loss_average', simple_value=loss_average)
+      summary.value.add(tag='eval_abs_relative_diff_average', simple_value=abs_relative_diff_average)
+      summary.value.add(tag='eval_abs_relative_diff_squared_average', simple_value=abs_relative_diff_squared_average)
+      summary.value.add(tag='eval_rmse_average', simple_value=rmse_average)
       summary_writer.add_summary(summary, global_step)
     except Exception as e:  # pylint: disable=broad-except
       coord.request_stop(e)
@@ -114,9 +121,12 @@ def evaluate():
     predict_flat = tf.reshape(predict_resize, [-1, 480*640])
     target_flat  = tf.reshape(target_resize, [-1, 480*640])
 
+    print(predict_flat)
+    print(target_flat)
+
     #TODO: you need to actually confirm this works
     abs_relative_diff_op = tf.reduce_mean(tf.divide(tf.abs(tf.subtract(predict_flat, target_flat)), target_flat))
-    
+
     #TODO: you need to actually confirm this works
     abs_relative_diff_squared_op = tf.reduce_mean(tf.divide(tf.abs(tf.squared_difference(predict_flat, target_flat)), target_flat))
     
@@ -133,11 +143,7 @@ def evaluate():
 
     summary_writer = tf.summary.FileWriter(FLAGS.eval_dir, g)
 
-    while True:
-      eval_once(saver, summary_writer, [loss_op], summary_op)
-      if FLAGS.run_once:
-        break
-      time.sleep(FLAGS.eval_interval_secs)
+    eval_once(saver, summary_writer, [abs_relative_diff_op, abs_relative_diff_squared_op, rmse_op], summary_op)
 
 
 def main(argv=None):  # pylint: disable=unused-argument

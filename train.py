@@ -126,7 +126,7 @@ def runIt():
 
 	  def before_run(self, run_context):
 	    self._step += 1
-	    return tf.train.SessionRunArgs([loss_op])  # Asks for loss value.
+	    return tf.train.SessionRunArgs([loss_op, logits])  # Asks for loss value.
 
 	  def after_run(self, run_context, run_values):
             log_frequency = 1
@@ -140,15 +140,17 @@ def runIt():
               batch_size = 1
 	      examples_per_sec = log_frequency * batch_size / duration
 	      sec_per_batch = float(duration / log_frequency)
-
-	      format_str = (': step %d, loss = %.2f (%.1f examples/sec; %.3f '
+              output_images = ret_values[1]
+              tf.summary.image('output_images', output_images, max_outputs=3)
+	      
+              format_str = (': step %d, loss = %.2f (%.1f examples/sec; %.3f '
 			    'sec/batch)')
 	      print (format_str % (self._step, loss_value,
 				   examples_per_sec, sec_per_batch))
 
 	with tf.train.MonitoredTrainingSession(
 	    checkpoint_dir=CHECKPOINT_DIR,
-	    hooks=[tf.train.StopAtStepHook(last_step=100),
+	    hooks=[tf.train.StopAtStepHook(last_step=100000),
 		   tf.train.NanTensorHook(loss_op),
                    _LoggerHook()],
 	    ) as mon_sess:

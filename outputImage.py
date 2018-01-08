@@ -103,7 +103,7 @@ def evaluate():
             num_threads=1,
             capacity= 50 + 3 * 1,
     )
-
+    images = tf.image.resize_images(images, imageSize)
     logits = network.inference(images)
 
     # Restore the moving average version of the learned variables for eval.

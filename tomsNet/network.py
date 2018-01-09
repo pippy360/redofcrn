@@ -119,7 +119,7 @@ def inference(input_images, keep_prob=.5):
 	conv3 = tf.nn.relu(conv2)
 	conv4 = tf.layers.max_pooling2d(conv3, pool_size=3, strides=(2, 2), name='pool1', padding='SAME')
 	
-        conv5 = residualLayer("Res_resize_1_", conv4, inputSize=64, outputSize=256, isResize=True, strides=(1, 1))
+	conv5 = residualLayer("Res_resize_1_", conv4, inputSize=64, outputSize=256, isResize=True, strides=(1, 1))
 	for i in range(2):
 		conv5 = residualLayer("Res_1_"+str(i), conv5, inputSize=64, outputSize=256, isResize=False)
 
@@ -267,3 +267,37 @@ def up_project(input_data, kernel_size, filters_size, id):
 	output = tf.nn.relu(output, name=layerName)
 
 	return output
+
+
+
+
+def getInference(images):
+	return inference(images)
+
+def getCheckpointDir():
+	return 'some hardcoded value'
+
+def saverRestore(sess):
+
+	#TODO: handle case when no checkpoint
+
+	# Restore the moving average version of the learned variables for eval.
+	variable_averages = tf.train.ExponentialMovingAverage(
+	network.MOVING_AVERAGE_DECAY)
+	variables_to_restore = variable_averages.variables_to_restore()
+
+	#is there one??
+    ckpt = tf.train.get_checkpoint_state(chpt_dir)
+
+
+	saver = tf.train.Saver(variables_to_restore)
+	# Restores from checkpoint
+	saver.restore(sess, ckpt.model_checkpoint_path)
+	# Assuming model_checkpoint_path looks something like:
+	#   /my-favorite-path/cifar10_train/model.ckpt-0,
+	# extract global_step from it.
+	global_step = ckpt.model_checkpoint_path.split('/')[-1].split('-')[-1]
+
+	print('checkpoint loaded with global_step: ' + str(global_step))
+	return global_step
+

@@ -1,5 +1,6 @@
 import numpy as np
 import tensorflow as tf
+import ResNet50UpProj
 
 # ----------------------------------------------------------------------------------
 # Commonly used layers and operations based on ethereon's implementation 
@@ -386,3 +387,42 @@ class Network(object):
 
         self.feed(output)
         return self
+
+
+
+
+
+def getInference(images):
+    net = ResNet50UpProj({'data': images}, batch_size, 1, False)
+    return net.get_output()
+
+def getCheckpointDir():
+    return 'some hardcoded value'
+
+def saverRestore(sess):
+
+    #can we be sure we'll have these moving averages??????
+
+    #TODO: handle case when no checkpoint
+
+    # Restore the moving average version of the learned variables for eval.
+    variable_averages = tf.train.ExponentialMovingAverage(
+    network.MOVING_AVERAGE_DECAY)
+    variables_to_restore = variable_averages.variables_to_restore()
+    saver = tf.train.Saver(variables_to_restore)
+    # Restores from checkpoint
+    saver.restore(sess, ckpt.model_checkpoint_path)
+    # Assuming model_checkpoint_path looks something like:
+    #   /my-favorite-path/cifar10_train/model.ckpt-0,
+    # extract global_step from it.
+    global_step = ckpt.model_checkpoint_path.split('/')[-1].split('-')[-1]
+
+    print('checkpoint loaded with global_step: ' + str(global_step))
+    return global_step
+
+
+
+
+
+
+

@@ -10,14 +10,17 @@ import numpy as np
 import tensorflow as tf
 
 import network
+import models 
 import argparse
+
+from PIL import Image
 
 parser = argparse.ArgumentParser()
 
 parser.add_argument('--eval_dir', type=str, default='./eval',
                     help='Directory where to write event logs.')
 
-parser.add_argument('--eval_data', type=str, default='test.csv',
+parser.add_argument('--eval_data', type=str, default='data/nyu_datasets/00000.jpg',
                     help='Either `test` or `train_eval`.')
 
 parser.add_argument('--checkpoint_dir', type=str, default='./train_checkpoint',
@@ -30,6 +33,9 @@ parser.add_argument('--num_examples', type=int, default=1000,
                     help='Number of examples to run.')
 
 parser.add_argument('--run_once', type=bool, default=False,
+                    help='Whether to run eval only once.')
+
+parser.add_argument('--n1', type=bool, default=False,
                     help='Whether to run eval only once.')
 
 batch_size = 1
@@ -49,7 +55,12 @@ def eval_once(saver, summary_writer, logits, summary_op):
     summary_op: Summary op.
   """
   with tf.Session() as sess:
-    ckpt = tf.train.get_checkpoint_state(FLAGS.checkpoint_dir)
+    chpt_dir = FLAGS.checkpoint_dir
+
+    if FLAGS.n1:
+      chpt_dir = './checkpoint_dir2'
+    
+    ckpt = tf.train.get_checkpoint_state(chpt_dir)
     if ckpt and ckpt.model_checkpoint_path:
       # Restores from checkpoint
       saver.restore(sess, ckpt.model_checkpoint_path)
@@ -57,6 +68,8 @@ def eval_once(saver, summary_writer, logits, summary_op):
       #   /my-favorite-path/cifar10_train/model.ckpt-0,
       # extract global_step from it.
       global_step = ckpt.model_checkpoint_path.split('/')[-1].split('-')[-1]
+      print('global_step')
+      print(global_step)
     else:
       print('No checkpoint file found')
       return
@@ -71,6 +84,7 @@ def eval_once(saver, summary_writer, logits, summary_op):
 
       return_values = sess.run(logits)
       pred = return_values[0]
+      print('pred')
       formatted = ((pred[0,:,:,0]) * 255 / np.max(pred[0,:,:,0])).astype('uint8')
       img = Image.fromarray(formatted)
       img.save("./output.jpg")
@@ -86,7 +100,7 @@ def eval_once(saver, summary_writer, logits, summary_op):
 
 
 
-def evaluate():
+def evaluate(input_network):
   """Eval CIFAR-10 for a number of steps."""
   with tf.Graph().as_default() as g:
     # Get images and labels for CIFAR-10.
@@ -94,17 +108,26 @@ def evaluate():
     
     imageSize = (IMAGE_HEIGHT, IMAGE_WIDTH)
     depthImageSize = (TARGET_HEIGHT, TARGET_WIDTH)
+    print('FLAGS.eval_dir')
+    print(FLAGS.eval_data)
+    
+    # Read an entire image file which is required since they're JPEGs, if the images
+    # are too large they could be split in advance to smaller files or use the Fixed
+    # reader to split up the file.
+    image_reader = tf.WholeFileReader()
 
-    image_filename_input = tf.read_file(FLAGS.eval_dir)
-    image = tf.image.decode_jpg(image_filename_input, channels=1)
-    images = tf.train.batch(
-            [image],
-            batch_size=1,
-            num_threads=1,
-            capacity= 50 + 3 * 1,
-    )
-    images = tf.image.resize_images(images, imageSize)
-    logits = network.inference(images)
+    # Read a whole file from the queue, the first returned value in the tuple is the
+    # filename which we are ignoring.
+    filename_queue = tf.train.string_input_producer(["./0.jpg"])
+
+    _, image_file = image_reader.read(filename_queue)
+
+    # Decode the image as a JPEG file, this will turn it into a Tensor which we can
+    # then use in training.
+    image = tf.image.decode_jpeg(image_file, channels=3)
+
+    images = tf.image.resize_images([image], imageSize)
+    logits = input_network.inference()
 
     # Restore the moving average version of the learned variables for eval.
     variable_averages = tf.train.ExponentialMovingAverage(
@@ -121,7 +144,8 @@ def evaluate():
 
 
 def main(argv=None):  # pylint: disable=unused-argument
-  evaluate()
+  input_network = network
+  evaluate(input_network)
 
 
 if __name__ == '__main__':

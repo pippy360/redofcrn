@@ -287,7 +287,7 @@ def saverRestore(sess):
 	variables_to_restore = variable_averages.variables_to_restore()
 
 	#is there one??
-    ckpt = tf.train.get_checkpoint_state(chpt_dir)
+	ckpt = tf.train.get_checkpoint_state(chpt_dir)
 
 
 	saver = tf.train.Saver(variables_to_restore)

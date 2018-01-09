@@ -9,7 +9,7 @@ import time
 import numpy as np
 import tensorflow as tf
 
-import network
+import tomsNet.network as network
 import models 
 import argparse
 

@@ -9,7 +9,12 @@ import time
 import numpy as np
 import tensorflow as tf
 
-import network
+
+from tomsNet.network import Network
+from tomsNet.network import csv_inputs
+
+from network2.network import theNetwork
+
 import argparse
 
 parser = argparse.ArgumentParser()
@@ -17,7 +22,7 @@ parser = argparse.ArgumentParser()
 parser.add_argument('--eval_dir', type=str, default='./eval',
                     help='Directory where to write event logs.')
 
-parser.add_argument('--eval_data', type=str, default='test.csv',
+parser.add_argument('--eval_data', type=str, default='test2.csv',
                     help='Either `test` or `train_eval`.')
 
 parser.add_argument('--checkpoint_dir', type=str, default='./train_checkpoint',
@@ -40,7 +45,7 @@ TARGET_HEIGHT = 128
 TARGET_WIDTH = 160
 BATCH_SIZE = 8
 
-def eval_once(saver, summary_writer, loss_ops, summary_op):
+def eval_once(summary_writer, loss_ops, summary_op, network_input):
   """Run Eval once.
   Args:
     saver: Saver.
@@ -50,17 +55,7 @@ def eval_once(saver, summary_writer, loss_ops, summary_op):
   """
   with tf.Session() as sess:
     ckpt = tf.train.get_checkpoint_state(FLAGS.checkpoint_dir)
-    if ckpt and ckpt.model_checkpoint_path:
-      # Restores from checkpoint
-      saver.restore(sess, ckpt.model_checkpoint_path)
-      # Assuming model_checkpoint_path looks something like:
-      #   /my-favorite-path/cifar10_train/model.ckpt-0,
-      # extract global_step from it.
-      global_step = ckpt.model_checkpoint_path.split('/')[-1].split('-')[-1]
-    else:
-      print('No checkpoint file found')
-      return
-
+    global_step = network_input.restore(sess)
     # Start the queue runners.
     coord = tf.train.Coordinator()
     try:
@@ -79,8 +74,11 @@ def eval_once(saver, summary_writer, loss_ops, summary_op):
         return_values = sess.run(loss_ops)
         abs_relative_diff_average += float(return_values[0])/float(num_iter)
         abs_relative_diff_squared_average += float(return_values[1])/float(num_iter)
-        print(return_values[2])
 	rmse_average += float(return_values[2])/float(num_iter)
+
+        print('%s: loss_average = abs: %.3f, abs_squared: %.3f, rmse: %.3f' % (datetime.now(), 
+		return_values[0], return_values[1], return_values[2]))
+        
         step += 1
 
       print('%s: loss_average = abs: %.3f, abs_squared: %.3f, rmse: %.3f' % (datetime.now(), 
@@ -100,7 +98,7 @@ def eval_once(saver, summary_writer, loss_ops, summary_op):
 
 
 
-def evaluate():
+def evaluate(network_input):
   """Eval CIFAR-10 for a number of steps."""
   with tf.Graph().as_default() as g:
     # Get images and labels for CIFAR-10.
@@ -109,11 +107,11 @@ def evaluate():
     imageSize = (IMAGE_HEIGHT, IMAGE_WIDTH)
     depthImageSize = (TARGET_HEIGHT, TARGET_WIDTH)
     filename_queue = tf.train.string_input_producer([FLAGS.eval_data], shuffle=True)
-    images, depths, invalid_depths, filenames = network.csv_inputs(filename_queue, batch_size, imageSize=imageSize, depthImageSize=depthImageSize)
-    logits = network.inference(images)
+    images, depths, invalid_depth, filenames = csv_inputs(filename_queue, batch_size, imageSize=imageSize, depthImageSize=depthImageSize)
+    logits = network_input.getInference(images)
 
-    predict = tf.multiply(logits, invalid_depths)
-    target = tf.multiply(depths, invalid_depths)
+    predict = logits
+    target = depths
  
     predict_resize = tf.image.resize_images(predict, original_size)
     target_resize  = tf.image.resize_images(target, original_size)
@@ -133,25 +131,21 @@ def evaluate():
     rmse_op = tf.sqrt(tf.reduce_mean(tf.squared_difference(predict_flat, target_flat))) 
 
     # Restore the moving average version of the learned variables for eval.
-    variable_averages = tf.train.ExponentialMovingAverage(
-        network.MOVING_AVERAGE_DECAY)
-    variables_to_restore = variable_averages.variables_to_restore()
-    saver = tf.train.Saver(variables_to_restore)
 
     # Build the summary operation based on the TF collection of Summaries.
     summary_op = tf.summary.merge_all()
 
     summary_writer = tf.summary.FileWriter(FLAGS.eval_dir, g)
 
-    eval_once(saver, summary_writer, [abs_relative_diff_op, abs_relative_diff_squared_op, rmse_op], summary_op)
+    eval_once(summary_writer, [abs_relative_diff_op, abs_relative_diff_squared_op, rmse_op], summary_op, network_input)
 
 
 def main(argv=None):  # pylint: disable=unused-argument
   if tf.gfile.Exists(FLAGS.eval_dir):
     tf.gfile.DeleteRecursively(FLAGS.eval_dir)
   tf.gfile.MakeDirs(FLAGS.eval_dir)
-  evaluate()
-
+  input_network = theNetwork()
+  evaluate(input_network)
 
 if __name__ == '__main__':
   FLAGS = parser.parse_args()

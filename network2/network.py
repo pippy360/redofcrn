@@ -417,7 +417,7 @@ class theNetwork:
 	    global_step = model_data_path.split('/')[-1].split('-')[-1]
 
 	    print('checkpoint loaded with global_step: ' + str(global_step))
-	    return global_step
+	    return 1
 
 
 

@@ -1,7 +1,6 @@
 import numpy as np
 import tensorflow as tf
-import ResNet50UpProj
-
+import fcrn 
 # ----------------------------------------------------------------------------------
 # Commonly used layers and operations based on ethereon's implementation 
 # https://github.com/ethereon/caffe-tensorflow
@@ -390,35 +389,35 @@ class Network(object):
 
 
 
+class theNetwork:
 
+	def getInference(self, images):
+	    net = fcrn.ResNet50UpProj({'data': images}, 1, 1, False)
+	    return net.get_output()
 
-def getInference(images):
-    net = ResNet50UpProj({'data': images}, batch_size, 1, False)
-    return net.get_output()
+	def getCheckpointDir():
+	    return 'some hardcoded value'
 
-def getCheckpointDir():
-    return 'some hardcoded value'
+	def restore(self, sess):
 
-def saverRestore(sess):
+	    #can we be sure we'll have these moving averages??????
 
-    #can we be sure we'll have these moving averages??????
+	    #TODO: handle case when no checkpoint
 
-    #TODO: handle case when no checkpoint
+	    # Restore the moving average version of the learned variables for eval.
 
-    # Restore the moving average version of the learned variables for eval.
-    variable_averages = tf.train.ExponentialMovingAverage(
-    network.MOVING_AVERAGE_DECAY)
-    variables_to_restore = variable_averages.variables_to_restore()
-    saver = tf.train.Saver(variables_to_restore)
-    # Restores from checkpoint
-    saver.restore(sess, ckpt.model_checkpoint_path)
-    # Assuming model_checkpoint_path looks something like:
-    #   /my-favorite-path/cifar10_train/model.ckpt-0,
-    # extract global_step from it.
-    global_step = ckpt.model_checkpoint_path.split('/')[-1].split('-')[-1]
+            # Use to load from ckpt file
+            model_data_path = './network2/checkpoint/NYU_FCRN.ckpt'
+            saver = tf.train.Saver()     
+            saver.restore(sess, model_data_path)
 
-    print('checkpoint loaded with global_step: ' + str(global_step))
-    return global_step
+	    # Assuming model_checkpoint_path looks something like:
+	    #   /my-favorite-path/cifar10_train/model.ckpt-0,
+	    # extract global_step from it.
+	    global_step = model_data_path.split('/')[-1].split('-')[-1]
+
+	    print('checkpoint loaded with global_step: ' + str(global_step))
+	    return global_step
 
 
 

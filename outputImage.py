@@ -9,7 +9,7 @@ import time
 import numpy as np
 import tensorflow as tf
 
-import tomsNet.network as network
+from tomsNet.network import Network 
 import models 
 import argparse
 
@@ -71,7 +71,7 @@ def evaluate(input_network):
 
     summary_writer = tf.summary.FileWriter(FLAGS.eval_dir, g)
     with tf.Session() as sess:
-
+      global_step = input_network.restore(sess)
       # Start the queue runners.
       coord = tf.train.Coordinator()
       try:
@@ -83,7 +83,7 @@ def evaluate(input_network):
         return_values = sess.run([logits])
         
         pred = return_values[0]
-        print('pred')
+		
         formatted = ((pred[0,:,:,0]) * 255 / np.max(pred[0,:,:,0])).astype('uint8')
         img = Image.fromarray(formatted)
         img.save("./output.jpg")
@@ -100,7 +100,7 @@ def evaluate(input_network):
 
 
 def main(argv=None):  # pylint: disable=unused-argument
-  input_network = network
+  input_network = Network()
   evaluate(input_network)
 
 

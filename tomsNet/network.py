@@ -269,35 +269,35 @@ def up_project(input_data, kernel_size, filters_size, id):
 	return output
 
 
+class Network:
 
+	def getInference(self, images):
+		return inference(images)
 
-def getInference(images):
-	return inference(images)
+	def getCheckpointDir():
+		return 'some hardcoded value'
 
-def getCheckpointDir():
-	return 'some hardcoded value'
+	def restore(self, sess):
 
-def saverRestore(sess):
+		#TODO: handle case when no checkpoint
 
-	#TODO: handle case when no checkpoint
+		# Restore the moving average version of the learned variables for eval.
+		variable_averages = tf.train.ExponentialMovingAverage(
+		MOVING_AVERAGE_DECAY)
+		variables_to_restore = variable_averages.variables_to_restore()
 
-	# Restore the moving average version of the learned variables for eval.
-	variable_averages = tf.train.ExponentialMovingAverage(
-	network.MOVING_AVERAGE_DECAY)
-	variables_to_restore = variable_averages.variables_to_restore()
+		#is there one??
+		ckpt = tf.train.get_checkpoint_state('./tomsNet/savedchkpt')
+		if ckpt and ckpt.model_checkpoint_path:
+			saver = tf.train.Saver(variables_to_restore)
+			# Restores from checkpoint
+			saver.restore(sess, ckpt.model_checkpoint_path)
+			# Assuming model_checkpoint_path looks something like:
+			#   /my-favorite-path/cifar10_train/model.ckpt-0,
+			# extract global_step from it.
+			global_step = ckpt.model_checkpoint_path.split('/')[-1].split('-')[-1]
 
-	#is there one??
-	ckpt = tf.train.get_checkpoint_state(chpt_dir)
-
-
-	saver = tf.train.Saver(variables_to_restore)
-	# Restores from checkpoint
-	saver.restore(sess, ckpt.model_checkpoint_path)
-	# Assuming model_checkpoint_path looks something like:
-	#   /my-favorite-path/cifar10_train/model.ckpt-0,
-	# extract global_step from it.
-	global_step = ckpt.model_checkpoint_path.split('/')[-1].split('-')[-1]
-
-	print('checkpoint loaded with global_step: ' + str(global_step))
-	return global_step
-
+			print('checkpoint loaded with global_step: ' + str(global_step))
+			return global_step
+		else:
+			raise

@@ -395,8 +395,8 @@ class theNetwork:
 	    net = fcrn.ResNet50UpProj({'data': images}, 1, 1, False)
 	    return net.get_output()
 
-	def getCheckpointDir():
-	    return 'some hardcoded value'
+	def getCheckpointDir(self):
+	    return './network2/training_checkpoint/'
 
 	def restore(self, sess):
 

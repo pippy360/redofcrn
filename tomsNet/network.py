@@ -274,8 +274,8 @@ class Network:
 	def getInference(self, images):
 		return inference(images)
 
-	def getCheckpointDir():
-		return 'some hardcoded value'
+	def getCheckpointDir(self):
+		return './tomsNet/training_savedchkpt'
 
 	def restore(self, sess):
 

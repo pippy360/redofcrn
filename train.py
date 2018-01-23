@@ -1,11 +1,16 @@
 import tensorflow as tf
-import network
 import os
 from PIL import Image
 import numpy as np
 import math
 import time
 import datetime
+
+from tomsNet.network import Network
+from tomsNet.network import csv_inputs, loss_l2_norm
+
+from network2.network import theNetwork
+
 
 
 CHECKPOINT_DIR = './train_checkpoint'
@@ -104,16 +109,16 @@ def train(total_loss, global_step, batch_size):
   return train_op
 
 
-def runIt():
+def runIt(inputNetwork):
     with tf.Graph().as_default():
 	global_step = tf.train.get_or_create_global_step()
         imageSize = (IMAGE_HEIGHT, IMAGE_WIDTH)
         depthImageSize = (TARGET_HEIGHT, TARGET_WIDTH)
         filename_queue = tf.train.string_input_producer([TRAIN_FILE], shuffle=False)
-        images, depths, invalid_depths, filenames = network.csv_inputs(filename_queue, BATCH_SIZE, imageSize=imageSize, depthImageSize=depthImageSize)
-        logits = network.inference(images)
+        images, depths, invalid_depths, filenames = csv_inputs(filename_queue, BATCH_SIZE, imageSize=imageSize, depthImageSize=depthImageSize)
+        logits = inputNetwork.getInference(images)
         #loss_op = loss_scale_invariant_l2_norm(logits, depths, invalid_depths)
-        loss_op = network.loss_l2_norm(logits, depths, invalid_depths)
+        loss_op = loss_l2_norm(logits, depths, invalid_depths)
 	train_op = train(loss_op, global_step, batch_size=1)
         init = tf.global_variables_initializer()
 
@@ -140,8 +145,8 @@ def runIt():
               batch_size = 1
 	      examples_per_sec = log_frequency * batch_size / duration
 	      sec_per_batch = float(duration / log_frequency)
-              output_images = ret_values[1]
-              tf.summary.image('output_images', output_images, max_outputs=3)
+              output_images = run_values.results[1]
+              #TODO: FIXME: tf.summary.image('output_images', output_images, max_outputs=3)
 	      
               format_str = (': step %d, loss = %.2f (%.1f examples/sec; %.3f '
 			    'sec/batch)')
@@ -149,7 +154,7 @@ def runIt():
 				   examples_per_sec, sec_per_batch))
 
 	with tf.train.MonitoredTrainingSession(
-	    checkpoint_dir=CHECKPOINT_DIR,
+	    checkpoint_dir=inputNetwork.getCheckpointDir(),
 	    hooks=[tf.train.StopAtStepHook(last_step=100000),
 		   tf.train.NanTensorHook(loss_op),
                    _LoggerHook()],
@@ -164,6 +169,7 @@ def runIt():
 def main(argv=None):  # pylint: disable=unused-argument
 	if not os.path.exists(CHECKPOINT_DIR):
 		os.makedirs(CHECKPOINT_DIR)
-	runIt()
+	inputNetwork = theNetwork()
+	runIt(inputNetwork)
 
 main()

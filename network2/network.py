@@ -407,7 +407,8 @@ class theNetwork:
 	    # Restore the moving average version of the learned variables for eval.
 
             # Use to load from ckpt file
-            model_data_path = './network2/checkpoint/NYU_FCRN.ckpt'
+            model_data_path = tf.train.latest_checkpoint('./network2/training_checkpoint/') 
+            #model_data_path = './network2/checkpoint/NYU_FCRN.ckpt'
             saver = tf.train.Saver()     
             saver.restore(sess, model_data_path)
 

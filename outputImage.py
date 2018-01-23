@@ -10,6 +10,7 @@ import numpy as np
 import tensorflow as tf
 
 from tomsNet.network import Network 
+from network2.network import theNetwork 
 import models 
 import argparse
 
@@ -80,11 +81,10 @@ def evaluate(input_network):
           threads.extend(qr.create_threads(sess, coord=coord, daemon=True,
                                            start=True))
 
-        return_values = sess.run([logits])
+        return_values, filename = sess.run([logits, image_file])
         
         pred = return_values[0]
-		
-        formatted = ((pred[0,:,:,0]) * 255 / np.max(pred[0,:,:,0])).astype('uint8')
+        formatted = ((pred[:,:,0]) * 255 / np.max(pred[:,:,0])).astype('uint8')
         img = Image.fromarray(formatted)
         img.save("./output.jpg")
 
@@ -100,7 +100,7 @@ def evaluate(input_network):
 
 
 def main(argv=None):  # pylint: disable=unused-argument
-  input_network = Network()
+  input_network = theNetwork()
   evaluate(input_network)
 
 

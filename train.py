@@ -117,6 +117,7 @@ def runIt(inputNetwork):
         filename_queue = tf.train.string_input_producer([TRAIN_FILE], shuffle=False)
         images, depths, invalid_depths, filenames = csv_inputs(filename_queue, BATCH_SIZE, imageSize=imageSize, depthImageSize=depthImageSize)
         logits = inputNetwork.getInference(images)
+        tf.summary.image('input_images', logits, max_outputs=3)
         #loss_op = loss_scale_invariant_l2_norm(logits, depths, invalid_depths)
         loss_op = loss_l2_norm(logits, depths, invalid_depths)
 	train_op = train(loss_op, global_step, batch_size=1)

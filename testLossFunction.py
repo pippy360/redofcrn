@@ -113,70 +113,70 @@ def evaluate1(input_network):
 def evaluate2(input_network):
   """Eval CIFAR-10 for a number of steps."""
   with tf.Graph().as_default() as g:
-	#with tf.variable_scope("InnerScope" , reuse=tf.AUTO_REUSE):
-	    # Get images and labels for CIFAR-10.
-	    original_size = (480, 640)
-	    
-	    imageSize = (IMAGE_HEIGHT, IMAGE_WIDTH)
-	    depthImageSize = (TARGET_HEIGHT, TARGET_WIDTH)
-	    print('FLAGS.eval_dir')
-	    print(FLAGS.eval_data)
+    # Get images and labels for CIFAR-10.
+    original_size = (480, 640)
+    
+    imageSize = (IMAGE_HEIGHT, IMAGE_WIDTH)
+    depthImageSize = (TARGET_HEIGHT, TARGET_WIDTH)
+    print('FLAGS.eval_dir')
+    print(FLAGS.eval_data)
 
-	    image_reader = tf.WholeFileReader()
-	    
-	    filename_queue1 = tf.train.string_input_producer(["./0.jpg"])
+    image_reader = tf.WholeFileReader()
+    
+    filename_queue1 = tf.train.string_input_producer(["./testImages/00609.jpg"])
 
-	    _, image_file1 = image_reader.read(filename_queue1)
+    _, image_file1 = image_reader.read(filename_queue1)
 
-	    image1 = tf.image.decode_jpeg(image_file1, channels=3)
+    image1 = tf.image.decode_jpeg(image_file1, channels=3)
 
-	    images1 = tf.image.resize_images([image1], imageSize)
-	    logits1 = input_network.getInference(images1)
+    images1 = tf.image.resize_images([image1], imageSize)
+    logits1 = input_network.getInference(images1)
 
 
-	    filename_queue2 = tf.train.string_input_producer(["./0.jpg"])
+    filename_queue2 = tf.train.string_input_producer(["./output.png"])
 
-	    _, image_file2 = image_reader.read(filename_queue2)
+    _, image_file2 = image_reader.read(filename_queue2)
 
-	    image2 = tf.image.decode_jpeg(image_file2, channels=3)
+    image2 = tf.image.decode_png(image_file2, channels=3)
 
-	    images2 = tf.image.resize_images([image2], imageSize)
-	    logits2 = input_network.getInference(images2)
-	    
-	    total_loss = loss_l2_norm(logits1, logits2, None)
+    images2 = tf.image.resize_images([image2], imageSize)
+    images2 = tf.reshape(images2, [1, 69312, 3] )
+    images2 = tf.slice(images2, [0,0,0], [-1,-1,1])
+    #total_loss = loss_l2_norm(logits1, images2, None)
 
-	    summary_op = tf.summary.merge_all()
+    summary_op = tf.summary.merge_all()
 
-	    summary_writer = tf.summary.FileWriter(FLAGS.eval_dir, g)
-	    with tf.Session() as sess:
-	      global_step = input_network.restore(sess)
-	      # Start the queue runners.
-	      coord = tf.train.Coordinator()
-	      try:
-		threads = []
-		for qr in tf.get_collection(tf.GraphKeys.QUEUE_RUNNERS):
-		  threads.extend(qr.create_threads(sess, coord=coord, daemon=True,
-						   start=True))
+    summary_writer = tf.summary.FileWriter(FLAGS.eval_dir, g)
+    with tf.Session() as sess:
+      global_step = input_network.restore(sess)
+      # Start the queue runners.
+      coord = tf.train.Coordinator()
+      try:
+	threads = []
+	for qr in tf.get_collection(tf.GraphKeys.QUEUE_RUNNERS):
+	  threads.extend(qr.create_threads(sess, coord=coord, daemon=True,
+					   start=True))
 
-		return_values, filename1, filename2 = sess.run([total_loss, image_file1, image_file2])
-		print('return_values')      
-		print(return_values)      
+	#return_values, filename1, filename2 = sess.run([total_loss, image_file1, image_file2])
+	return_values = sess.run([ images2 ])
+	print('return_values')      
+	print(return_values)      
 
-		summary = tf.Summary()
-		summary.ParseFromString(sess.run(summary_op))
-		summary_writer.add_summary(summary, global_step)
-	      except Exception as e:  # pylint: disable=broad-except
-		coord.request_stop(e)
+	summary = tf.Summary()
+	summary.ParseFromString(sess.run(summary_op))
+	summary_writer.add_summary(summary, global_step)
+      except Exception as e:  # pylint: disable=broad-except
+	coord.request_stop(e)
 
-	      coord.request_stop()
-	      coord.join(threads, stop_grace_period_secs=10)
+      coord.request_stop()
+      coord.join(threads, stop_grace_period_secs=10)
 
 
 
 
 def main(argv=None):  # pylint: disable=unused-argument
   input_network = theNetwork()
-  evaluate(input_network)
+  evaluate2(input_network)
 
 
 if __name__ == '__main__':

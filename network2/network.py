@@ -395,10 +395,13 @@ class theNetwork:
 	    net = fcrn.ResNet50UpProj({'data': images}, 1, 1, False)
 	    return net.get_output()
 
-	def getCheckpointDir(self):
-	    return './network2/training_checkpoint/'
+	def getCheckpointDir(self, switch=False):
+	    if switch:
+		return './network2/checkpoint/NYU_FCRN.ckpt'
+	    else:
+	    	return './network2/training_checkpoint/'
 
-	def restore(self, sess):
+	def restore(self, sess, switch=False):
 
 	    #can we be sure we'll have these moving averages??????
 
@@ -407,7 +410,9 @@ class theNetwork:
 	    # Restore the moving average version of the learned variables for eval.
 
             # Use to load from ckpt file
-            model_data_path = tf.train.latest_checkpoint('./network2/training_checkpoint/') 
+            model_data_path ='./network2/checkpoint/NYU_FCRN.ckpt'# tf.train.latest_checkpoint( './network2/checkpoint/NYU_FCRN.ckpt' ) 
+            print("model_data_path")
+            print(model_data_path)
             #model_data_path = './network2/checkpoint/NYU_FCRN.ckpt'
             saver = tf.train.Saver()     
             saver.restore(sess, model_data_path)

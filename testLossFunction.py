@@ -139,16 +139,18 @@ def evaluate2(input_network):
 
     image2 = tf.image.decode_png(image_file2, channels=3)
 
-    images2 = tf.image.resize_images([image2], imageSize)
-    images2 = tf.reshape(images2, [1, 69312, 3] )
-    images2 = tf.slice(images2, [0,0,0], [-1,-1,1])
-    #total_loss = loss_l2_norm(logits1, images2, None)
+    images2 = tf.image.resize_images([image2], depthImageSize)
+    images2 = tf.slice(images2, [0,0,0, 0], [-1,-1,-1,1])
+    print("printing the shape")
+    print("printing the shape" + str(logits1.shape))
+    print("printing the shape" + str(images2.shape))
+    total_loss = loss_l2_norm(logits1, images2, None)
 
     summary_op = tf.summary.merge_all()
 
     summary_writer = tf.summary.FileWriter(FLAGS.eval_dir, g)
     with tf.Session() as sess:
-      global_step = input_network.restore(sess)
+      global_step = input_network.restore(sess, True)
       # Start the queue runners.
       coord = tf.train.Coordinator()
       try:
@@ -157,11 +159,16 @@ def evaluate2(input_network):
 	  threads.extend(qr.create_threads(sess, coord=coord, daemon=True,
 					   start=True))
 
-	#return_values, filename1, filename2 = sess.run([total_loss, image_file1, image_file2])
-	return_values = sess.run([ images2 ])
+	return_values, filename1, filename2, outputImage = sess.run([total_loss, image_file1, image_file2, logits1])
+	pred = outputImage
+	formatted = ((pred[0,:,:,0]) * 255 / np.max(pred[0,:,:,0])).astype('uint8')
+	#print("pred")
+	#print(pred[0])
+	img = Image.fromarray(formatted)
+	img.save("./output.png")
+	#return_values = sess.run([ images2 ])
 	print('return_values')      
 	print(return_values)      
-
 	summary = tf.Summary()
 	summary.ParseFromString(sess.run(summary_op))
 	summary_writer.add_summary(summary, global_step)

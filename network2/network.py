@@ -410,7 +410,10 @@ class theNetwork:
 	    # Restore the moving average version of the learned variables for eval.
 
             # Use to load from ckpt file
-            model_data_path ='./network2/checkpoint/NYU_FCRN.ckpt'# tf.train.latest_checkpoint( './network2/checkpoint/NYU_FCRN.ckpt' ) 
+            if switch:
+            	model_data_path = './network2/checkpoint/NYU_FCRN.ckpt'
+            else:
+                model_data_path = tf.train.latest_checkpoint( self.getCheckpointDir() ) 
             print("model_data_path")
             print(model_data_path)
             #model_data_path = './network2/checkpoint/NYU_FCRN.ckpt'

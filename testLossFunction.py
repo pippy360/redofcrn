@@ -97,10 +97,15 @@ def evaluate2(input_network):
     print("printing the shape" + str(depth.shape))
     
     #total_loss = loss_l2_norm(logits1, depth, None)
-
-    logits_flat = tf.reshape(logits1, [-1, TARGET_HEIGHT*TARGET_WIDTH])
-    depths_flat = tf.reshape(depth, [-1, TARGET_HEIGHT*TARGET_WIDTH])
+    logits1 = tf.image.resize_images(logits1, (10, 10))
+    depth   = tf.image.resize_images(depth  , (10, 10))
+ 
+    logits_flat = tf.contrib.layers.flatten(logits1)
+    depths_flat = tf.contrib.layers.flatten(depth)
     d = tf.subtract(logits_flat, depths_flat)
+    d_test = d
+    d_test = tf.abs(d_test)
+    d_test = tf.reduce_sum(d_test)
     total_loss = tf.nn.l2_loss(d)
 
     summary_op = tf.summary.merge_all()
@@ -117,17 +122,46 @@ def evaluate2(input_network):
 	  threads.extend(qr.create_threads(sess, coord=coord, daemon=True,
 					   start=True))
 
-	return_values, logits1_out, images2_out, outputImage = sess.run([total_loss, logits1, depth, logits1])
+	return_values, images2_out, outputImage, logits_flat_out, depths_flat_out, d_out = sess.run([total_loss, depth, logits1,  logits_flat, depths_flat, d_test])
 	print('logits1_out[0]')
-	print(logits1_out[0])
+	print(logits_flat_out[0])
 	print('images2_out[0]')
-	print(images2_out[0])
+	print(depths_flat_out[0])
+	ar1 = []
+	ar2 = []
+	stri = "["
+	for v in logits_flat_out[0]:
+		stri = stri + ',' + str(v)
+		ar1.append(v)
+	stri = stri + ']'
+	print(stri)
+	stri = "["
+	for v in depths_flat_out[0]:
+		stri = stri + ',' + str(v)
+		ar2.append(v)
+
+	total = 0
+	stri = "["
+	for i in range(len(ar1)):
+		#print( str(ar1[i]) + " - " + str(ar2[i]) + " = " + str(ar1[i] - ar2[i]) )
+		total = total + abs(ar1[i] - ar2[i])
+		stri = stri + ',' + str(abs(ar1[i] - ar2[i]))
+	print('total')
+	print(total)
+	print('d_out')
+	print(d_out)
+	stri = stri + ']'
+	print(stri)
+	pred2 = images2_out
+	formatted2 = ((pred2[0,:,:,0]) * 255 / np.max(pred2[0,:,:,0])).astype('uint8')
 	pred = outputImage
 	formatted = ((pred[0,:,:,0]) * 255 / np.max(pred[0,:,:,0])).astype('uint8')
 	#print("pred")
 	#print(pred[0])
 	img = Image.fromarray(formatted)
 	img.save("./output.png")
+	img = Image.fromarray(formatted2)
+	img.save("./output2.png")
 	#return_values = sess.run([ images2 ])
 	print('return_values')      
 	print(return_values)      

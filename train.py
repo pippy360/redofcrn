@@ -7,7 +7,7 @@ import time
 import datetime
 
 from tomsNet.network import Network
-from tomsNet.network import csv_inputs, loss_l2_norm
+from tomsNet.network import getFilenameQueuesFromCSVFile, csv_inputs, loss_l2_norm
 
 from network2.network import theNetwork
 
@@ -114,8 +114,8 @@ def runIt(inputNetwork):
 	global_step = tf.train.get_or_create_global_step()
         imageSize = (IMAGE_HEIGHT, IMAGE_WIDTH)
         depthImageSize = (TARGET_HEIGHT, TARGET_WIDTH)
-        filename_queue = tf.train.string_input_producer([TRAIN_FILE], shuffle=False)
-        images, depths, invalid_depths, filenames = csv_inputs(filename_queue, BATCH_SIZE, imageSize=imageSize, depthImageSize=depthImageSize)
+	filename, depth_filename = getFilenameQueuesFromCSVFile( TRAIN_FILE )
+        images, depths, invalid_depths, filenames = csv_inputs(filename, depth_filename, BATCH_SIZE, imageSize=imageSize, depthImageSize=depthImageSize)
         logits = inputNetwork.getInference(images)
         tf.summary.image('input_images', logits, max_outputs=3)
         #loss_op = loss_scale_invariant_l2_norm(logits, depths, invalid_depths)

@@ -8,29 +8,35 @@ INITIAL_LEARNING_RATE = 0.000000001
 LEARNING_RATE_DECAY_FACTOR = 0.9
 MOVING_AVERAGE_DECAY = 0.999999
 
-def csv_inputs(filename_queue, batch_size, imageSize, depthImageSize):
-
+def getFilenameQueuesFromCSVFile( csvFilePath ):
+    filename_queue = tf.train.string_input_producer([csvFilePath], shuffle=False)
     reader = tf.TextLineReader()
     _, serialized_example = reader.read(filename_queue)
     filename, depth_filename = tf.decode_csv(serialized_example, [["path"], ["annotation"]])
+    return filename, depth_filename
+
+def csv_inputs(image_filename, depth_filename, batch_size, imageSize, depthImageSize):
+
     # input
-    jpg = tf.read_file(filename)
-    image = tf.image.decode_jpeg(jpg, channels=3)
-    image = tf.cast(image, tf.float32)       
+    image = tf.read_file(image_filename)
+    image = tf.image.decode_jpeg(image, channels=3)
+    image = tf.image.resize_images(image, imageSize)
+    
     # target
-    depth_png = tf.read_file(depth_filename)
-    depth = tf.image.decode_png(depth_png, channels=1)
-    depth = tf.cast(depth, tf.float32)
-    depth = tf.div(depth, [255.0])
-    #depth = tf.cast(depth, tf.int64)
+    depth = tf.read_file(depth_filename)
+    depth = tf.image.decode_png(depth, channels=3)#fixme: change to 1 channel
+    print('depth.shape')
+    print(depth.shape)
+    depth = tf.image.resize_images(depth, depthImageSize)
+    print(depth.shape)
+    depth = tf.slice(depth, [0,0, 0], [-1,-1,1])
+    depth = tf.divide(depth, 100.0)
 
     # resize
-    image = tf.image.resize_images(image, imageSize)
-    depth = tf.image.resize_images(depth, depthImageSize)
     invalid_depth = tf.sign(depth)
     # generate batch
     images, depths, invalid_depths, filenames = tf.train.batch(
-        [image, depth, invalid_depth, filename],
+        [image, depth, invalid_depth, image_filename],
         batch_size=batch_size,
         num_threads=4,
         capacity= 50 + 3 * batch_size,
@@ -65,11 +71,8 @@ def loss_scale_invariant_l2_norm(logits, depths, invalid_depths):
 def loss_l2_norm(logits, depths, invalid_depths):
     logits_flat = tf.reshape(logits, [-1, TARGET_HEIGHT*TARGET_WIDTH])
     depths_flat = tf.reshape(depths, [-1, TARGET_HEIGHT*TARGET_WIDTH])
-    invalid_depths_flat = tf.reshape(invalid_depths, [-1, TARGET_HEIGHT*TARGET_WIDTH])
 
-    predict = tf.multiply(logits_flat, invalid_depths_flat)
-    target = tf.multiply(depths_flat, invalid_depths_flat)
-    d = tf.subtract(predict, target)
+    d = tf.subtract(logits_flat, depths_flat)
     return tf.nn.l2_loss(d)
 
 def residualLayer(name, input_data, inputSize, outputSize, isResize, strides=None):

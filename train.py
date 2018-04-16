@@ -55,7 +55,7 @@ def _add_loss_summaries(total_loss):
 
 
 
-def train(total_loss, global_step, batch_size):
+def train(total_loss, batch_size):
   """Train CIFAR-10 model.
   Create an optimizer and apply to all trainable variables. Add moving
   average for all trainable variables.
@@ -73,7 +73,6 @@ def train(total_loss, global_step, batch_size):
 
 def runIt(inputNetwork):
     with tf.Graph().as_default():
-	global_step = tf.train.create_global_step()
         imageSize = (IMAGE_HEIGHT, IMAGE_WIDTH)
         depthImageSize = (TARGET_HEIGHT, TARGET_WIDTH)
 	filename, depth_filename = getFilenameQueuesFromCSVFile( TRAIN_FILE )
@@ -82,14 +81,28 @@ def runIt(inputNetwork):
         tf.summary.image('input_images', logits, max_outputs=3)
         #loss_op = loss_scale_invariant_l2_norm(logits, depths, invalid_depths)
         loss_op = loss_l2_norm(logits, depths, invalid_depths)
-	train_op = train(loss_op, global_step, batch_size=1)
+	train_op = train(loss_op, batch_size=1)
         init = tf.global_variables_initializer()
 	with tf.Session() as sess:
-		network.restore(sess, True)
-		print("init run")
-		for i_iter in range(1000):
-			_, loss = sess.run((train_op, loss_op))
-			print("loss " + str(loss))
+		global_step = inputNetwork.restore(sess, True)
+		
+		coord = tf.train.Coordinator()
+		try:
+			threads = []
+			for qr in tf.get_collection(tf.GraphKeys.QUEUE_RUNNERS):
+				threads.extend(qr.create_threads(sess, coord=coord, daemon=True, start=True))
+			if global_step is None:
+				sess.run([init])
+				
+			print("init run")
+			for i in range(10000):
+				_, loss = sess.run([train_op, loss_op])
+				print("loss " + str(loss))
+		except Exception as e:
+			coord.request_stop(e)
+			print(e)
+			raise e
+		print("done")
 
 
 def main(argv=None):  # pylint: disable=unused-argument

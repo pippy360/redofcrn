@@ -397,7 +397,7 @@ class theNetwork:
 
 	def getCheckpointDir(self, switch=False):
 	    if switch:
-		return './network2/checkpoint/NYU_FCRN.ckpt'
+		return './network2/checkpoint/'
 	    else:
 	    	return './network2/training_checkpoint/'
 
@@ -410,10 +410,7 @@ class theNetwork:
 	    # Restore the moving average version of the learned variables for eval.
 
             # Use to load from ckpt file
-            if switch:
-            	model_data_path = './network2/checkpoint/NYU_FCRN.ckpt'
-            else:
-                model_data_path = tf.train.latest_checkpoint( self.getCheckpointDir() ) 
+            model_data_path = tf.train.latest_checkpoint( self.getCheckpointDir(switch=True) )
             print("model_data_path")
             print(model_data_path)
             #model_data_path = './network2/checkpoint/NYU_FCRN.ckpt'

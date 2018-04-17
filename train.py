@@ -21,7 +21,7 @@ IMAGE_HEIGHT = 228
 IMAGE_WIDTH = 304
 TARGET_HEIGHT = 128
 TARGET_WIDTH = 160
-BATCH_SIZE = 1
+BATCH_SIZE = 10
 
 NUM_EXAMPLES_PER_EPOCH_FOR_TRAIN = 500
 NUM_EPOCHS_PER_DECAY = 30
@@ -110,35 +110,37 @@ def runIt(inputNetwork):
 				sess.run([init])
 				
 			print("init run")
-			for i in range(100000):
-				if not i %10 == 0:
+			for i in range(1000000):
+				if not i % 100 == 0:
 					sess.run([train_op])
 				else:
-					_, loss, outputDepth, testDepth, image = sess.run([train_op, loss_op, logits, depths, images])
-					print("loss " + str(loss))
+					_, loss, outputDepth, testDepth, image, filenames2 = sess.run([train_op, loss_op, logits, depths, images, filenames])
+					print( "step: " + str(i) + "\tloss: " + str(loss) )
 					
 					pred = outputDepth
-					print("np.max(pred[0,:,:,0])):")
-					print( np.max(pred[0,:,:,0]) )
+					#print("np.max(pred[0,:,:,0])):")
+					#print( np.max(pred[0,:,:,0]) )
 					formatted = ((pred[0,:,:,0]) * 255 / np.max(pred[0,:,:,0])).astype('uint8')
 					img = Image.fromarray(formatted)
 					img.save("./output.png")
 
 					pred = testDepth 
-					print("np.max(pred[0,:,:,0])):")
-					print( np.max(pred[0,:,:,0]) )
+					#print("np.max(pred[0,:,:,0])):")
+					#print( np.max(pred[0,:,:,0]) )
 					formatted = ((pred[0,:,:,0]) * 255 / np.max(pred[0,:,:,0])).astype('uint8')
 					img = Image.fromarray(formatted)
 					img.save("./outputDepth.png")
-					print('image[0]')
-					print(image[0])
-					print(image[0].shape)
+					#print('image[0]')
+					#print(image[0])
+					#print(image[0].shape)
 					image2 = np.zeros((512,512,3), 'uint8')
-					print(image.shape)
+					#print(image.shape)
 					img = Image.fromarray(image[0].astype('uint8'))
 					img.save("./outputOrgImage.jpg")
-			#saver = tf.train.Saver()
-			#saver.save(sess, './ch/ch')
+					#print('filenames')
+					#print(filenames2)
+					saver = tf.train.Saver()
+					saver.save(sess, './ch/ch')
 		except Exception as e:
 			coord.request_stop(e)
 			print(e)

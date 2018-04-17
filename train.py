@@ -53,22 +53,34 @@ def _add_loss_summaries(total_loss):
 
   return loss_averages_op
 
+def train(total_loss, global_step, batch_size):
+    num_batches_per_epoch = float(NUM_EXAMPLES_PER_EPOCH_FOR_TRAIN) / batch_size
+    decay_steps = int(num_batches_per_epoch * NUM_EPOCHS_PER_DECAY)
+    lr = tf.train.exponential_decay(
+        INITIAL_LEARNING_RATE,
+        global_step,
+        decay_steps,
+        LEARNING_RATE_DECAY_FACTOR,
+        staircase=True)
+    tf.scalar_summary('learning_rate', lr)
+    loss_averages_op = _add_loss_summaries(total_loss)
+    with tf.control_dependencies([loss_averages_op]):
+        opt = tf.train.AdamOptimizer(lr)
+        grads = opt.compute_gradients(total_loss)
+    apply_gradient_op = opt.apply_gradients(grads, global_step=global_step)
+    for var in tf.trainable_variables():
+        print(var.op.name)
+        tf.histogram_summary(var.op.name, var)
+    for grad, var in grads:
+        if grad is not None:
+            tf.histogram_summary(var.op.name + '/gradients', grad)
+    variable_averages = tf.train.ExponentialMovingAverage(
+        MOVING_AVERAGE_DECAY, global_step)
+    variables_averages_op = variable_averages.apply(tf.trainable_variables())
+    with tf.control_dependencies([apply_gradient_op, variables_averages_op]):
+        train_op = tf.no_op(name='train')
 
-
-def train(total_loss, batch_size):
-  """Train CIFAR-10 model.
-  Create an optimizer and apply to all trainable variables. Add moving
-  average for all trainable variables.
-  Args:
-    total_loss: Total loss from loss().
-    global_step: Integer Variable counting the number of training steps
-      processed.
-  Returns:
-    train_op: op for training.
-  """
-  optimizer = tf.train.GradientDescentOptimizer(0.01)
-  train_op = optimizer.minimize(total_loss)
-  return train_op
+    return train_op
 
 
 def runIt(inputNetwork):
@@ -81,7 +93,10 @@ def runIt(inputNetwork):
         tf.summary.image('input_images', logits, max_outputs=3)
         #loss_op = loss_scale_invariant_l2_norm(logits, depths, invalid_depths)
         loss_op = loss_l2_norm(logits, depths, invalid_depths)
-	train_op = train(loss_op, batch_size=1)
+
+  	optimizer = tf.train.GradientDescentOptimizer(0.0000000005)
+  	train_op = optimizer.minimize(loss_op)
+
         init = tf.global_variables_initializer()
 	with tf.Session() as sess:
 		global_step = inputNetwork.restore(sess, True)
@@ -95,9 +110,31 @@ def runIt(inputNetwork):
 				sess.run([init])
 				
 			print("init run")
-			for i in range(10000):
-				_, loss = sess.run([train_op, loss_op])
-				print("loss " + str(loss))
+			for i in range(100000):
+				if not i %10 == 0:
+					sess.run([train_op])
+				else:
+					_, loss, outputDepth, testDepth, image = sess.run([train_op, loss_op, logits, depths, images])
+					print("loss " + str(loss))
+					
+					pred = outputDepth
+					print("np.max(pred[0,:,:,0])):")
+					print( np.max(pred[0,:,:,0]) )
+					formatted = ((pred[0,:,:,0]) * 255 / np.max(pred[0,:,:,0])).astype('uint8')
+					img = Image.fromarray(formatted)
+					img.save("./output.png")
+
+					pred = testDepth 
+					print("np.max(pred[0,:,:,0])):")
+					print( np.max(pred[0,:,:,0]) )
+					formatted = ((pred[0,:,:,0]) * 255 / np.max(pred[0,:,:,0])).astype('uint8')
+					img = Image.fromarray(formatted)
+					img.save("./outputDepth.png")
+
+					img = Image.fromarray(image)
+					img.save("./outputDepth.png")
+			#saver = tf.train.Saver()
+			#saver.save(sess, './ch/ch')
 		except Exception as e:
 			coord.request_stop(e)
 			print(e)

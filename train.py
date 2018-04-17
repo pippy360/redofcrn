@@ -94,7 +94,7 @@ def runIt(inputNetwork):
         #loss_op = loss_scale_invariant_l2_norm(logits, depths, invalid_depths)
         loss_op = loss_l2_norm(logits, depths, invalid_depths)
 
-  	optimizer = tf.train.GradientDescentOptimizer(0.0000000005)
+  	optimizer = tf.train.GradientDescentOptimizer(0.0000000009)
   	train_op = optimizer.minimize(loss_op)
 
         init = tf.global_variables_initializer()
@@ -130,9 +130,13 @@ def runIt(inputNetwork):
 					formatted = ((pred[0,:,:,0]) * 255 / np.max(pred[0,:,:,0])).astype('uint8')
 					img = Image.fromarray(formatted)
 					img.save("./outputDepth.png")
-
-					img = Image.fromarray(image)
-					img.save("./outputDepth.png")
+					print('image[0]')
+					print(image[0])
+					print(image[0].shape)
+					image2 = np.zeros((512,512,3), 'uint8')
+					print(image.shape)
+					img = Image.fromarray(image[0].astype('uint8'))
+					img.save("./outputOrgImage.jpg")
 			#saver = tf.train.Saver()
 			#saver.save(sess, './ch/ch')
 		except Exception as e:

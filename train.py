@@ -103,8 +103,9 @@ def train(total_loss, global_step):
       MOVING_AVERAGE_DECAY, global_step)
   with tf.control_dependencies([apply_gradient_op]):
     variables_averages_op = variable_averages.apply(tf.trainable_variables())
+    variables_to_restore = variable_averages.variables_to_restore()
 
-  return variables_averages_op
+  return variables_averages_op, variables_to_restore
 
 
 def runIt(inputNetwork):
@@ -119,11 +120,11 @@ def runIt(inputNetwork):
         #loss_op = loss_scale_invariant_l2_norm(logits, depths, invalid_depths)
         loss_op = loss_l2_norm(logits, depths, invalid_depths)
 
-  	train_op = train(loss_op, global_step)
+  	train_op, restoreVar = train(loss_op, global_step)
 
         init = tf.global_variables_initializer()
 	with tf.Session() as sess:
-		global_step = inputNetwork.restore(sess)
+		global_step = inputNetwork.restore(sess, restoreVar)
 		
 		coord = tf.train.Coordinator()
 		try:

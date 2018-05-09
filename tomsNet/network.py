@@ -278,9 +278,9 @@ class Network:
 		return inference(images)
 
 	def getCheckpointDir(self):
-		return './tomsNet/training_savedchkpt'
+		return './ch'
 
-	def restore(self, sess):
+	def restore(self, sess, restoreVars):
 
 		#TODO: handle case when no checkpoint
 
@@ -290,9 +290,9 @@ class Network:
 		variables_to_restore = variable_averages.variables_to_restore()
 
 		#is there one??
-		ckpt = tf.train.get_checkpoint_state('./tomsNet/savedchkpt')
+		ckpt = tf.train.get_checkpoint_state( self.getCheckpointDir() )
 		if ckpt and ckpt.model_checkpoint_path:
-			saver = tf.train.Saver(variables_to_restore)
+			saver = tf.train.Saver()
 			# Restores from checkpoint
 			saver.restore(sess, ckpt.model_checkpoint_path)
 			# Assuming model_checkpoint_path looks something like:
@@ -303,4 +303,4 @@ class Network:
 			print('checkpoint loaded with global_step: ' + str(global_step))
 			return global_step
 		else:
-			raise
+			return None
